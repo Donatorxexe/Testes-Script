@@ -449,6 +449,10 @@ local C = {
     -- Aliases de contexto
     aimbot      = Color3.fromRGB(168, 85, 247),
     fly         = Color3.fromRGB(59, 130, 246),
+
+    -- Aliases de compatibilidade (código usa ambos os nomes)
+    muted       = Color3.fromRGB(120, 120, 135),
+    card        = Color3.fromRGB(20, 20, 28),
 }
 
 -- Temas predefinidos
@@ -853,7 +857,7 @@ local function mkCard(parent, height, order)
     local card = Instance.new("Frame")
     card.Name = "Card"
     card.Size = UDim2.new(1, 0, 0, height)
-    card.BackgroundColor3 = C.card
+    card.BackgroundColor3 = C.bgCard
     card.BorderSizePixel = 0
     card.LayoutOrder = order or 0
     card.ClipsDescendants = false
@@ -2149,6 +2153,33 @@ panel.MouseLeave:Connect(function()
         ghostApply(false)
     end
 end)
+
+-- ══ EXPOSE LOCALS TO obj FOR CROSS-SECTION ACCESS ══
+obj.switchTab = switchTab
+obj.tabFrames = tabFrames
+obj.tabButtons = tabButtons
+obj.currentTab = currentTab
+
+-- Numeric + string indexing for tabScrolls compatibility
+obj.tabScrolls = {}
+local tabIdToNum = {}
+for i, tab in ipairs(TABS) do
+    obj.tabScrolls[i] = tabFrames[tab.id]
+    obj.tabScrolls[tab.id] = tabFrames[tab.id]
+    tabIdToNum[tab.id] = i
+end
+
+-- Override switchTab to also update obj.currentTab
+local origSwitchTab = switchTab
+switchTab = function(tabId)
+    origSwitchTab(tabId)
+    obj.currentTab = tabId
+    -- Also store numeric version
+    if tabIdToNum[tabId] then
+        obj.currentTabNum = tabIdToNum[tabId]
+    end
+end
+obj.switchTab = switchTab
 
 print("[MEDUSA] Secção 10 OK — Main GUI Structure (10 tabs, sidebar, topbar, drag)")
 
@@ -4377,8 +4408,8 @@ end
 
 -- ── Build Players Tab content ─────────────────────────────────
 local function refreshPlayersTab()
-    if not obj.tabScrolls or not obj.tabScrolls[6] then return end
-    local scroll = obj.tabScrolls[6]
+    if not obj.tabScrolls or not obj.tabScrolls["players"] then return end
+    local scroll = obj.tabScrolls["players"]
     -- Clear
     for _, c in ipairs(scroll:GetChildren()) do
         if not c:IsA("UIListLayout") and not c:IsA("UIPadding") then
@@ -4502,7 +4533,7 @@ end
 task.spawn(function()
     while st.running do
         task.wait(5)
-        if obj.currentTab == 6 then
+        if obj.currentTab == "players" then
             pcall(refreshPlayersTab)
         end
     end
@@ -4553,8 +4584,8 @@ end
 -- ── Wire Actions Tab buttons ──────────────────────────────────
 task.delay(1.5, function()
     pcall(function()
-        if obj.tabScrolls and obj.tabScrolls[8] then
-            local scroll = obj.tabScrolls[8]
+        if obj.tabScrolls and obj.tabScrolls["misc"] then
+            local scroll = obj.tabScrolls["misc"]
             -- Look for buttons by their text and wire them
             for _, child in ipairs(scroll:GetDescendants()) do
                 if child:IsA("TextButton") then
@@ -4645,7 +4676,7 @@ task.delay(0.5, function()
     end
     
     -- Switch to first tab
-    if obj.switchTab then obj.switchTab(1) end
+    if obj.switchTab then obj.switchTab("status") end
     
     -- Show notification
     task.delay(0.8, function()
