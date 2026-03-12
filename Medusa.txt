@@ -246,131 +246,267 @@ local function loadConfig()
 end
 loadConfig()
 
--- ═══ S6: STREAMPROOF + GHOST MODE ═══
+-- ═══ S6: STREAMPROOF + GHOST MODE (XENO OPTIMIZED) ═══
+--[[
+    XENO STREAMPROOF ARCHITECTURE:
+    
+    Priority order for Xeno:
+    1. protect_gui() + CoreGui (Xeno's native method)
+    2. syn.protect_gui() + CoreGui (Synapse wrapper — Xeno supports this)
+    3. gethui() (some Xeno versions expose this)
+    4. cloneref(CoreGui) (fallback)
+    5. CoreGui direct (last resort)
+    
+    All GUIs get:
+    - Random obfuscated names (avoid detection)
+    - DisplayOrder = 2147483647 (max int32)
+    - IgnoreGuiInset = true
+    - CaptureService:ExcludeFromCapture() (Roblox 2024+)
+    - protect_gui() called ALWAYS, not just when SP is toggled
+    
+    When SP is ON:  GUIs live in CoreGui/gethui (invisible to OBS/Discord)
+    When SP is OFF: GUIs live in PlayerGui (normal)
+]]
+
 local SP = {
     active = false,
     method = "none",
     hiddenParent = nil,
     allGuis = {},
+    _protectFn = nil,
+    _captureService = nil,
 }
 
--- Detect best method
+-- Generate random GUI name to avoid detection
+local function randomName()
+    local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    local name = ""
+    for i = 1, math.random(8, 14) do
+        local idx = math.random(1, #chars)
+        name = name .. chars:sub(idx, idx)
+    end
+    return name
+end
+
+-- Detect protect_gui function (Xeno supports this)
 do
-    local function tryGethui()
-        local fns = {
-            typeof(gethui) == "function" and gethui,
-            getgenv and typeof(getgenv().gethui) == "function" and getgenv().gethui,
-            typeof(get_hidden_gui) == "function" and get_hidden_gui,
-            typeof(gethiddenui) == "function" and gethiddenui,
+    local protectFn = nil
+    
+    -- Method 1: Direct protect_gui (Xeno's primary method)
+    if typeof(protect_gui) == "function" then
+        protectFn = protect_gui
+        print("[Medusa SP] Found: protect_gui()")
+    end
+    
+    -- Method 2: syn.protect_gui (Synapse wrapper — Xeno supports)
+    if not protectFn and typeof(syn) == "table" then
+        if typeof(syn.protect_gui) == "function" then
+            protectFn = syn.protect_gui
+            print("[Medusa SP] Found: syn.protect_gui()")
+        end
+    end
+    
+    -- Method 3: Check getgenv for protect_gui
+    if not protectFn and getgenv then
+        pcall(function()
+            local env = getgenv()
+            if typeof(env.protect_gui) == "function" then
+                protectFn = env.protect_gui
+                print("[Medusa SP] Found: getgenv().protect_gui()")
+            end
+        end)
+    end
+    
+    SP._protectFn = protectFn
+    
+    -- Cache CaptureService
+    pcall(function()
+        SP._captureService = game:GetService("CaptureService")
+    end)
+    
+    -- Now determine the best hidden parent
+    -- Priority 1: protect_gui + CoreGui (XENO'S BEST METHOD)
+    if protectFn and CoreGui then
+        -- Test if we can actually parent to CoreGui with protection
+        local testOk = pcall(function()
+            local test = Instance.new("ScreenGui")
+            test.Name = randomName()
+            protectFn(test)
+            test.Parent = CoreGui
+            test:Destroy()
+        end)
+        if testOk then
+            SP.method = "protect+CoreGui"
+            SP.hiddenParent = CoreGui
+            print("[Medusa SP] ✅ Method: protect_gui + CoreGui (XENO NATIVE)")
+        end
+    end
+    
+    -- Priority 2: gethui (some Xeno versions)
+    if SP.method == "none" then
+        local ghuiFns = {
+            typeof(gethui) == "function" and gethui or nil,
+            getgenv and typeof(getgenv().gethui) == "function" and getgenv().gethui or nil,
+            typeof(get_hidden_gui) == "function" and get_hidden_gui or nil,
+            typeof(gethiddenui) == "function" and gethiddenui or nil,
         }
-        for _, fn in ipairs(fns) do
+        for _, fn in ipairs(ghuiFns) do
             if fn then
                 local ok, result = pcall(fn)
                 if ok and result then
                     SP.method = "gethui"
                     SP.hiddenParent = result
                     print("[Medusa SP] ✅ Method: gethui()")
-                    return true
+                    break
                 end
             end
         end
-        return false
     end
-
-    local function tryProtectCoreGui()
-        if CoreGui then
-            local protectFn = typeof(protect_gui) == "function" and protect_gui
-                or (typeof(syn) == "table" and typeof(syn.protect_gui) == "function" and syn.protect_gui)
-            if protectFn then
-                SP.method = "protect+CoreGui"
-                SP.hiddenParent = CoreGui
-                SP._protectFn = protectFn
-                print("[Medusa SP] ✅ Method: protect_gui + CoreGui")
-                return true
-            end
+    
+    -- Priority 3: cloneref + CoreGui
+    if SP.method == "none" and EXEC.hasCloneref and CoreGui then
+        local ok, ref = pcall(cloneref, CoreGui)
+        if ok and ref then
+            SP.method = "cloneref"
+            SP.hiddenParent = ref
+            print("[Medusa SP] ✅ Method: cloneref(CoreGui)")
         end
-        return false
     end
-
-    local function tryClonerefCoreGui()
-        if EXEC.hasCloneref and CoreGui then
-            local ok, ref = pcall(cloneref, CoreGui)
-            if ok and ref then
-                SP.method = "cloneref"
-                SP.hiddenParent = ref
-                print("[Medusa SP] ✅ Method: cloneref(CoreGui)")
-                return true
-            end
+    
+    -- Priority 4: Direct CoreGui (last resort — may fail on some games)
+    if SP.method == "none" and CoreGui then
+        local testOk = pcall(function()
+            local test = Instance.new("ScreenGui")
+            test.Name = randomName()
+            test.Parent = CoreGui
+            test:Destroy()
+        end)
+        if testOk then
+            SP.method = "CoreGui"
+            SP.hiddenParent = CoreGui
+            print("[Medusa SP] ✅ Method: CoreGui (direct)")
         end
-        return false
     end
-
-    if not tryGethui() then
-        if not tryProtectCoreGui() then
-            if not tryClonerefCoreGui() then
-                print("[Medusa SP] ⚠️ No StreamProof method available")
-            end
-        end
+    
+    if SP.method == "none" then
+        print("[Medusa SP] ⚠️ No StreamProof method available")
+        print("[Medusa SP] GUIs will be in PlayerGui (visible to capture)")
+    else
+        print("[Medusa SP] ✅ Ready! Method:", SP.method)
     end
 end
 
+-- Apply all protections to a ScreenGui
+local function protectGui(sg)
+    -- 1. Set max display order
+    sg.DisplayOrder = 2147483647
+    sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    sg.ResetOnSpawn = false
+    
+    -- 2. IgnoreGuiInset (pushes GUI outside game frame for capture)
+    pcall(function() sg.IgnoreGuiInset = true end)
+    
+    -- 3. CaptureService exclusion (Roblox 2024+)
+    if SP._captureService then
+        pcall(function()
+            SP._captureService:ExcludeFromCapture(sg)
+        end)
+    end
+    
+    -- 4. Apply protect_gui (Xeno's protection)
+    if SP._protectFn then
+        pcall(function() SP._protectFn(sg) end)
+    end
+    
+    -- 5. Try to prevent overlay detection
+    pcall(function() RS:SetRobloxGuiFocused(false) end)
+end
+
+-- Create a new ScreenGui with full protection
 local function createGui(name)
     local sg = Instance.new("ScreenGui")
-    sg.Name = name or "MedusaGui"
-    sg.ResetOnSpawn = false
-    sg.DisplayOrder = 2147483647 -- MAX INT — above everything
-    sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    -- Discord/OBS/Stream protection
-    pcall(function() sg.IgnoreGuiInset = true end)
-    -- Exclude from screenshot/capture (Roblox 2024+)
-    pcall(function()
-        local cs = game:GetService("CaptureService")
-        if cs and cs.ExcludeFromCapture then
-            cs:ExcludeFromCapture(sg)
-        end
-    end)
-    -- Try to prevent overlay detection
-    pcall(function()
-        RS:SetRobloxGuiFocused(false)
-    end)
-    -- Protect and parent
+    -- Use random name for stealth (real name stored as attribute)
+    local realName = name or "MedusaGui"
+    sg.Name = randomName()
+    pcall(function() sg:SetAttribute("MedusaType", realName) end)
+    
+    -- Apply ALL protections
+    protectGui(sg)
+    
+    -- Parent based on StreamProof state
     if SP.active and SP.hiddenParent then
-        if SP._protectFn then pcall(SP._protectFn, sg) end
-        sg.Parent = SP.hiddenParent
+        pcall(function() sg.Parent = SP.hiddenParent end)
+        -- Fallback to playerGui if CoreGui parenting failed
+        if not sg.Parent then
+            sg.Parent = playerGui
+        end
     else
-        if SP._protectFn then pcall(SP._protectFn, sg) end
         sg.Parent = playerGui
     end
+    
+    -- Register for SP management
     table.insert(SP.allGuis, sg)
+    
+    print("[Medusa] GUI created:", realName, "→", sg.Parent and sg.Parent.Name or "nil")
     return sg
 end
 
+-- Enable StreamProof: move ALL GUIs to hidden parent
 local function spEnable()
-    if SP.method == "none" then return false end
-    SP.active = true
-    for _, gui in ipairs(SP.allGuis) do
-        pcall(function()
-            if SP._protectFn then pcall(SP._protectFn, gui) end
-            gui.Parent = SP.hiddenParent
-        end)
+    if SP.method == "none" or not SP.hiddenParent then
+        print("[Medusa SP] ❌ Cannot enable — no method available")
+        return false
     end
-    print("[Medusa SP] ✅ Enabled - method:", SP.method)
-    return true
+    
+    SP.active = true
+    local moved = 0
+    local failed = 0
+    
+    for _, gui in ipairs(SP.allGuis) do
+        if gui and gui.Parent then
+            -- Re-apply protection before moving
+            protectGui(gui)
+            
+            local ok = pcall(function()
+                gui.Parent = SP.hiddenParent
+            end)
+            
+            if ok and gui.Parent == SP.hiddenParent then
+                moved = moved + 1
+            else
+                failed = failed + 1
+                -- Keep in playerGui as fallback
+                pcall(function() gui.Parent = playerGui end)
+            end
+        end
+    end
+    
+    print(string.format("[Medusa SP] ✅ Enabled — %d/%d GUIs moved (method: %s)", moved, moved + failed, SP.method))
+    return moved > 0
 end
 
+-- Disable StreamProof: move ALL GUIs back to PlayerGui
 local function spDisable()
     SP.active = false
+    local moved = 0
+    
     for _, gui in ipairs(SP.allGuis) do
-        pcall(function() gui.Parent = playerGui end)
+        if gui then
+            pcall(function()
+                gui.Parent = playerGui
+                moved = moved + 1
+            end)
+        end
     end
-    print("[Medusa SP] Disabled")
+    
+    print(string.format("[Medusa SP] Disabled — %d GUIs restored to PlayerGui", moved))
 end
 
--- Ghost Mode
+-- Ghost Mode: panel becomes near-invisible, appears on hover
 local ghostActive = false
 local function setGhostMode(on)
     ghostActive = on
-    -- Ghost is handled in the render loop
+    -- Ghost behavior is handled in the S31B render/update loop
 end
 
 -- ═══ S7: NOTIFICATIONS ═══
