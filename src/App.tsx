@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import scriptRaw from '../Medusa.txt?raw';
+import scriptRaw from '../Medusa.lua?raw';
 
 // ═══════════════════════════════════════════════════════
 // MEDUSA v13 ARCHITECT — Premium Web Showcase
@@ -713,7 +713,7 @@ export default function App() {
               🐍 {showLoadstring ? 'Esconder Loadstring' : 'Obter Script'}
             </button>
             <CopyButton
-              text={`loadstring(game:HttpGet("https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/Medusa.txt"))()`}
+              text={`loadstring(game:HttpGet("https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/Medusa.lua"))()`}
               label="Copiar Loadstring"
             />
             <button
@@ -722,7 +722,7 @@ export default function App() {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'Medusa.txt';
+                a.download = 'Medusa.lua';
                 a.click();
                 URL.revokeObjectURL(url);
               }}
@@ -740,7 +740,7 @@ export default function App() {
               onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 0 25px rgba(59,130,246,0.5)'; }}
               onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
             >
-              📥 Download Medusa.txt
+              📥 Download Medusa.lua
             </button>
           </div>
         </section>
