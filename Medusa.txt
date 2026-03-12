@@ -89,6 +89,15 @@ local playerGui = player:WaitForChild("PlayerGui")
 local camera    = Workspace.CurrentCamera
 local mouse     = player:GetMouse()
 
+-- Aliases curtas (usadas em todo o script)
+local UIS = UserInputService
+local TS  = TweenService
+local RS  = RunService
+
+-- Variáveis globais de runtime
+local rmbDown = false
+local lastESPRefresh = os.time()
+
 -- Xeno-safe function detection
 local function hasFunction(name)
     local f = nil
@@ -189,27 +198,27 @@ local cfg = {
     crosshairGap       = 4,
     crosshairThick     = 2,
 
-    -- ── GUI Editor ──
-    panelW             = 460,
-    panelH             = 580,
-    sidebarW           = 44,
-    topbarH            = 44,
-    fontSize           = 12,
-    titleSize          = 16,
-    cardSpacing        = 8,
-    cardPadding        = 10,
-    borderW            = 1,
-    cornerRadius       = 0,        -- 0 = retangular
-    toggleW            = 36,
-    toggleH            = 18,
-    sliderH            = 10,
-    btnH               = 32,
-    panelOpacity       = 0,         -- 0 = opaco, 100 = transparente
-    wmOpacity           = 0,
-
-    -- ── Toggle/Slider Styles ──
-    toggleStyle        = 1,         -- 1=Dot 2=Check 3=Fill 4=Slash
-    sliderStyle        = 1,         -- 1=Bar 2=Thin 3=Thick 4=Glow
+    -- ── GUI Editor (subtable para acesso cfg.gui.X) ──
+    gui = {
+        panelW         = 460,
+        panelH         = 580,
+        sidebarW       = 44,
+        topbarH        = 44,
+        fontSize       = 12,
+        titleSize      = 16,
+        cardSpacing    = 8,
+        cardPadding    = 10,
+        borderWidth    = 1,
+        cornerRadius   = 0,        -- 0 = retangular
+        toggleW        = 36,
+        toggleH        = 18,
+        sliderH        = 10,
+        buttonH        = 32,
+        panelOpacity   = 0,         -- 0 = opaco, 100 = transparente
+        wmOpacity      = 0,
+        toggleStyle    = 1,         -- 1=Dot 2=Check 3=Fill 4=Slash
+        sliderStyle    = 1,         -- 1=Bar 2=Thin 3=Thick 4=Glow
+    },
 
     -- ── RGB Engine ──
     rgbEnabled         = false,
@@ -225,6 +234,22 @@ local cfg = {
     ghostAlpha         = 0.95,      -- transparência quando rato está fora
     ghostRevealDist    = 50,        -- px do rato ao painel para revelar
 }
+
+-- ══ BACKWARD COMPAT: aliases flat para cfg.gui (secções posteriores acedem cfg.X) ══
+-- Cria metatable que redireciona cfg.panelW → cfg.gui.panelW automaticamente
+local guiKeys = {}
+for k, _ in pairs(cfg.gui) do guiKeys[k] = true end
+
+setmetatable(cfg, {
+    __index = function(t, k)
+        if guiKeys[k] then return cfg.gui[k] end
+        return rawget(t, k)
+    end,
+    __newindex = function(t, k, v)
+        if guiKeys[k] then cfg.gui[k] = v; return end
+        rawset(t, k, v)
+    end,
+})
 
 -- ╔══════════════════════════════════════════════════════════════╗
 -- ║  SECÇÃO 4: STATE & OBJECT MANAGEMENT                       ║
@@ -348,6 +373,10 @@ local function clearAllConns()
     obj.connections = {}
 end
 
+-- Alias para compatibilidade (secções posteriores usam addConnection)
+local addConnection = addConn
+local removeConnection = removeConn
+
 -- ── Keybinds ──
 local keybinds = {
     esp        = Enum.KeyCode.T,
@@ -416,6 +445,10 @@ local C = {
     sliderFill  = Color3.fromRGB(0, 255, 170),
     sliderKnob  = Color3.fromRGB(255, 255, 255),
     sliderGlow  = Color3.fromRGB(0, 255, 170),
+
+    -- Aliases de contexto
+    aimbot      = Color3.fromRGB(168, 85, 247),
+    fly         = Color3.fromRGB(59, 130, 246),
 }
 
 -- Temas predefinidos
@@ -2715,8 +2748,8 @@ do
 
     local c4 = mkCard(parent, 70, 4)
     mkLabel(c4, "👁️  PANEL OPACITY", 13, C.text, 12, 8); mkSep(c4, 28)
-    mkSlider(c4, "👁️ Opacity", 100 - cfg.panelOpacity, 10, 100, 36, function(v)
-        cfg.panelOpacity = (100 - v) / 100; panel.BackgroundTransparency = cfg.panelOpacity end)
+    mkSlider(c4, "👁️ Opacity", 100 - (cfg.gui.panelOpacity * 100), 10, 100, 36, function(v)
+        cfg.gui.panelOpacity = (100 - v) / 100; panel.BackgroundTransparency = cfg.gui.panelOpacity end)
 
     -- Toggle/Slider style selectors
     local c5 = mkCard(parent, 90, 5)
@@ -2778,27 +2811,27 @@ do
     local parent = tabFrames["gui"]
     local c1 = mkCard(parent, 170, 1)
     mkLabel(c1, "📐  DIMENSIONS", 13, C.text, 12, 8); mkSep(c1, 28)
-    mkSlider(c1, "📏 Width", cfg.panelW, 280, 600, 36, function(v) cfg.panelW = v
-        TweenService:Create(panel, TweenInfo.new(0.2), {Size = UDim2.new(0,v,0,cfg.panelH)}):Play() end)
-    mkSlider(c1, "📐 Height", cfg.panelH, 400, 850, 86, function(v) cfg.panelH = v
-        TweenService:Create(panel, TweenInfo.new(0.2), {Size = UDim2.new(0,cfg.panelW,0,v)}):Play() end)
-    mkSlider(c1, "📏 Sidebar W", cfg.sidebarW, 30, 70, 136, function(v) cfg.sidebarW = v
+    mkSlider(c1, "📏 Width", cfg.gui.panelW, 280, 600, 36, function(v) cfg.gui.panelW = v
+        TweenService:Create(panel, TweenInfo.new(0.2), {Size = UDim2.new(0,v,0,cfg.gui.panelH)}):Play() end)
+    mkSlider(c1, "📐 Height", cfg.gui.panelH, 400, 850, 86, function(v) cfg.gui.panelH = v
+        TweenService:Create(panel, TweenInfo.new(0.2), {Size = UDim2.new(0,cfg.gui.panelW,0,v)}):Play() end)
+    mkSlider(c1, "📏 Sidebar W", cfg.gui.sidebarW, 30, 70, 136, function(v) cfg.gui.sidebarW = v
         TweenService:Create(sidebar, TweenInfo.new(0.2), {Size = UDim2.new(0,v,1,0)}):Play() end)
 
     local c2 = mkCard(parent, 110, 2)
     mkLabel(c2, "🔤  TYPOGRAPHY", 13, C.text, 12, 8); mkSep(c2, 28)
-    mkSlider(c2, "🔤 Font Size", cfg.fontSize, 8, 16, 36, function(v) cfg.fontSize = v end)
-    mkSlider(c2, "🔠 Title Size", cfg.titleSize, 12, 24, 86, function(v) cfg.titleSize = v; titleLbl.TextSize = v end)
+    mkSlider(c2, "🔤 Font Size", cfg.gui.fontSize, 8, 16, 36, function(v) cfg.gui.fontSize = v end)
+    mkSlider(c2, "🔠 Title Size", cfg.gui.titleSize, 12, 24, 86, function(v) cfg.gui.titleSize = v; titleLbl.TextSize = v end)
 
     local c3 = mkCard(parent, 110, 3)
     mkLabel(c3, "🔲  CORNER & BORDER", 13, C.text, 12, 8); mkSep(c3, 28)
-    mkSlider(c3, "🔲 Corner Radius", cfg.cornerRadius, 0, 20, 36, function(v) cfg.cornerRadius = v end)
-    mkSlider(c3, "📏 Border Width", cfg.borderW, 0, 4, 86, function(v) cfg.borderW = v end)
+    mkSlider(c3, "🔲 Corner Radius", cfg.gui.cornerRadius, 0, 20, 36, function(v) cfg.gui.cornerRadius = v end)
+    mkSlider(c3, "📏 Border Width", cfg.gui.borderWidth, 0, 4, 86, function(v) cfg.gui.borderWidth = v end)
 
     local c4 = mkCard(parent, 110, 4)
     mkLabel(c4, "🔧  COMPONENTS", 13, C.text, 12, 8); mkSep(c4, 28)
-    mkSlider(c4, "🔘 Toggle W", cfg.toggleW, 26, 50, 36, function(v) cfg.toggleW = v end)
-    mkSlider(c4, "🎚️ Slider H", cfg.sliderH, 4, 20, 86, function(v) cfg.sliderH = v end)
+    mkSlider(c4, "🔘 Toggle W", cfg.gui.toggleW, 26, 50, 36, function(v) cfg.gui.toggleW = v end)
+    mkSlider(c4, "🎚️ Slider H", cfg.gui.sliderH, 4, 20, 86, function(v) cfg.gui.sliderH = v end)
 
     local c5 = mkCard(parent, 170, 5)
     mkLabel(c5, "🖌️  BG COLOR", 13, C.text, 12, 8); mkSep(c5, 28)
@@ -2809,10 +2842,10 @@ do
 
     local c6 = mkCard(parent, 60, 6)
     mkBtn(c6, "🔄 RESET GUI", C.warning, 34, function()
-        cfg.panelW = 460; cfg.panelH = 580; cfg.sidebarW = 44; cfg.topbarH = 44
-        cfg.fontSize = 12; cfg.titleSize = 16; cfg.cornerRadius = 0; cfg.borderW = 1
-        cfg.toggleW = 36; cfg.toggleH = 18; cfg.sliderH = 10; cfg.panelOpacity = 0
-        panel.Size = UDim2.new(0, cfg.panelW, 0, cfg.panelH); titleLbl.TextSize = cfg.titleSize
+        cfg.gui.panelW = 460; cfg.gui.panelH = 580; cfg.gui.sidebarW = 44; cfg.gui.topbarH = 44
+        cfg.gui.fontSize = 12; cfg.gui.titleSize = 16; cfg.gui.cornerRadius = 0; cfg.gui.borderWidth = 1
+        cfg.gui.toggleW = 36; cfg.gui.toggleH = 18; cfg.gui.sliderH = 10; cfg.gui.panelOpacity = 0
+        panel.Size = UDim2.new(0, cfg.gui.panelW, 0, cfg.gui.panelH); titleLbl.TextSize = cfg.gui.titleSize
         notify("🔄 GUI Reset!", "🔄", C.warning) end)
 end
 print("[MEDUSA] Secção 20 OK — Tab GUI Editor")
@@ -3288,7 +3321,7 @@ local refreshLoop = task.spawn(function()
     while st.running do
         task.wait(1)
         if st.esp then
-            local rem = cfg.espRefresh - (os.time() - lastESPRefresh)
+            local rem = cfg.espRefreshRate - (os.time() - lastESPRefresh)
             if rem <= 0 then
                 clearESP()
                 task.wait(0.3)
@@ -3942,7 +3975,7 @@ addConnection(UIS.InputBegan:Connect(function(input, gp)
                     local knob = tFrame:FindFirstChild("Knob")
                     local bg = tFrame
                     if knob then
-                        local xPos = newState and UDim2.new(1, -cfg.guiToggleH + 4, 0.5, 0) or UDim2.new(0, 4, 0.5, 0)
+                        local xPos = newState and UDim2.new(1, -cfg.gui.toggleH + 4, 0.5, 0) or UDim2.new(0, 4, 0.5, 0)
                         TS:Create(knob, TweenInfo.new(0.2, Enum.EasingStyle.Back), {Position = xPos}):Play()
                     end
                     bg.BackgroundColor3 = newState and C.accent or C.bgDark
@@ -4365,7 +4398,7 @@ local function refreshPlayersTab()
     unspecBtn.LayoutOrder = 0
     unspecBtn.AutoButtonColor = false
     unspecBtn.Parent = scroll
-    Instance.new("UICorner", unspecBtn).CornerRadius = UDim.new(0, cfg.guiCornerR)
+    Instance.new("UICorner", unspecBtn).CornerRadius = UDim.new(0, cfg.gui.cornerRadius)
     unspecBtn.MouseButton1Click:Connect(unspectate)
     
     -- Player cards
@@ -4377,7 +4410,7 @@ local function refreshPlayersTab()
             card.BorderSizePixel = 0
             card.LayoutOrder = i
             card.Parent = scroll
-            Instance.new("UICorner", card).CornerRadius = UDim.new(0, cfg.guiCornerR)
+            Instance.new("UICorner", card).CornerRadius = UDim.new(0, cfg.gui.cornerRadius)
             
             -- Name
             local nm = Instance.new("TextLabel")
@@ -4569,7 +4602,7 @@ task.spawn(function()
             
             -- Update ESP refresh timer
             if obj.espTimerLbl and st.esp then
-                local rem = cfg.espRefresh - (os.time() - lastESPRefresh)
+                local rem = cfg.espRefreshRate - (os.time() - lastESPRefresh)
                 obj.espTimerLbl.Text = string.format("⏱️ Refresh: %d:%02d", math.floor(rem / 60), rem % 60)
             end
         end)
