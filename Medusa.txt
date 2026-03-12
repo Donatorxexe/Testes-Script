@@ -309,8 +309,17 @@ local function createGui(name)
     local sg = Instance.new("ScreenGui")
     sg.Name = name or "MedusaGui"
     sg.ResetOnSpawn = false
-    sg.DisplayOrder = 999
+    sg.DisplayOrder = 999999
     sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    -- Discord/OBS protection
+    pcall(function() sg.IgnoreGuiInset = true end)
+    -- Try to use CaptureService exclusion (modern Roblox)
+    pcall(function()
+        local cs = game:GetService("CaptureService")
+        if cs and cs.ExcludeFromCapture then
+            cs:ExcludeFromCapture(sg)
+        end
+    end)
     if SP.active and SP.hiddenParent then
         if SP._protectFn then pcall(SP._protectFn, sg) end
         sg.Parent = SP.hiddenParent
@@ -964,19 +973,7 @@ for _, tab in ipairs(TABS) do
     obj.tabBtns[tab.id].MouseButton1Click:Connect(function() switchTab(tab.id) end)
 end
 
--- FPS counter
-local fpsCount, fpsTick = 0, tick()
-addConn(RS.RenderStepped:Connect(function()
-    fpsCount = fpsCount + 1
-    if tick() - fpsTick >= 1 then
-        local fps = fpsCount
-        fpsCount = 0
-        fpsTick = tick()
-        local ping = "?"
-        pcall(function() ping = tostring(math.floor(player:GetNetworkPing() * 1000)) end)
-        if obj.fpsPingLabel then obj.fpsPingLabel.Text = fps .. " FPS | " .. ping .. " ms" end
-    end
-end))
+-- FPS counter moved to S31B (unified update loop)
 
 print("[Medusa] GUI structure created OK")
 
@@ -1073,8 +1070,8 @@ do
         tList.SortOrder = Enum.SortOrder.LayoutOrder
 
         mkToggle(tInner, "🎯 Aimbot (RMB)", st.aimbot, 1, function(on) st.aimbot = on; if not on then rmbDown = false; obj.lockedTarget = nil end end)
-        mkToggle(tInner, "🔇 Silent Aim", st.silentAim, 2, function(on) st.silentAim = on end)
-        mkToggle(tInner, "🔫 Trigger Bot", st.triggerBot, 3, function(on) st.triggerBot = on end)
+        mkToggle(tInner, "🔇 Silent Aim", st.silentAim, 2, function(on) st.silentAim = on; notify(on and "🔇 Silent Aim ON" or "❌ Silent Aim OFF", on and C.purple or C.error) end)
+        mkToggle(tInner, "🔫 Trigger Bot", st.triggerBot, 3, function(on) st.triggerBot = on; notify(on and "🔫 Trigger Bot ON" or "❌ Trigger Bot OFF", on and C.warning or C.error) end)
         mkToggle(tInner, "📐 Prediction", st.prediction, 4, function(on) st.prediction = on; cfg.prediction = on end)
 
         -- Sliders
@@ -1138,7 +1135,7 @@ do
         eList.Padding = UDim.new(0, 2)
         eList.SortOrder = Enum.SortOrder.LayoutOrder
 
-        mkToggle(eInner, "👁️ ESP (Highlights)", st.esp, 1, function(on) st.esp = on end)
+        mkToggle(eInner, "👁️ ESP (Highlights)", st.esp, 1, function(on) st.esp = on; if not on then clearESP() else lastESPRefresh = os.time() end; notify(on and "👁️ ESP ON" or "❌ ESP OFF", on and C.success or C.error) end)
         mkToggle(eInner, "📦 3D Boxes", st.box3d, 2, function(on) st.box3d = on end)
         mkToggle(eInner, "📏 Tracers", st.tracers, 3, function(on) st.tracers = on end)
         mkToggle(eInner, "🦴 Skeleton", st.skeleton, 4, function(on) st.skeleton = on end)
@@ -1169,7 +1166,7 @@ do
         wInner.Position = UDim2.new(0, 0, 0, 26)
         wInner.BackgroundTransparency = 1
         wInner.Parent = wCard
-        mkToggle(wInner, "💡 Fullbright", st.fullbright, 1, function(on) st.fullbright = on end)
+        mkToggle(wInner, "💡 Fullbright", st.fullbright, 1, function(on) st.fullbright = on; setFullbright(on); notify(on and "💡 Fullbright ON" or "❌ Fullbright OFF", on and C.success or C.error) end)
 
         print("[Medusa] Tab Visuals OK")
     end
@@ -1191,13 +1188,13 @@ do
         mList.Padding = UDim.new(0, 2)
         mList.SortOrder = Enum.SortOrder.LayoutOrder
 
-        mkToggle(mInner, "✈️ Fly", st.fly, 1, function(on) st.fly = on end)
-        mkToggle(mInner, "👻 Noclip", st.noclip, 2, function(on) st.noclip = on end)
-        mkToggle(mInner, "🏃 Speed", st.speed, 3, function(on) st.speed = on end)
-        mkToggle(mInner, "🦘 Infinite Jump", st.infJump, 4, function(on) st.infJump = on end)
-        mkToggle(mInner, "🪂 No Fall Damage", st.noFallDmg, 5, function(on) st.noFallDmg = on end)
-        mkToggle(mInner, "🖱️ Click TP (hold bind)", st.clickTP, 6, function(on) st.clickTP = on end)
-        mkToggle(mInner, "🌀 Spin Bot", st.spinBot, 7, function(on) st.spinBot = on end)
+        mkToggle(mInner, "✈️ Fly", st.fly, 1, function(on) st.fly = on; if on then enableFly() else disableFly() end; notify(on and "✈️ Fly ON" or "❌ Fly OFF", on and C.blue or C.error) end)
+        mkToggle(mInner, "👻 Noclip", st.noclip, 2, function(on) st.noclip = on; notify(on and "👻 Noclip ON" or "❌ Noclip OFF", on and C.success or C.error) end)
+        mkToggle(mInner, "🏃 Speed", st.speed, 3, function(on) st.speed = on; notify(on and "🏃 Speed ON" or "❌ Speed OFF", on and C.success or C.error) end)
+        mkToggle(mInner, "🦘 Infinite Jump", st.infJump, 4, function(on) st.infJump = on; notify(on and "🦘 Inf Jump ON" or "❌ Inf Jump OFF", on and C.success or C.error) end)
+        mkToggle(mInner, "🪂 No Fall Damage", st.noFallDmg, 5, function(on) st.noFallDmg = on; notify(on and "🪂 No Fall Dmg ON" or "❌ No Fall Dmg OFF", on and C.success or C.error) end)
+        mkToggle(mInner, "🖱️ Click TP (hold bind)", st.clickTP, 6, function(on) st.clickTP = on; notify(on and "🖱️ Click TP ON" or "❌ Click TP OFF", on and C.success or C.error) end)
+        mkToggle(mInner, "🌀 Spin Bot", st.spinBot, 7, function(on) st.spinBot = on; notify(on and "🌀 Spin Bot ON" or "❌ Spin Bot OFF", on and C.success or C.error) end)
 
         -- Sliders
         local sCard = mkCard(tab, 130, 2)
@@ -1235,7 +1232,7 @@ do
         hList.Padding = UDim.new(0, 2)
         hList.SortOrder = Enum.SortOrder.LayoutOrder
 
-        mkToggle(hInner, "📦 Hitbox Expander", st.hitbox, 1, function(on) st.hitbox = on end)
+        mkToggle(hInner, "📦 Hitbox Expander", st.hitbox, 1, function(on) st.hitbox = on; if not on then resetAllHitboxes() end; notify(on and "📦 Hitbox ON" or "❌ Hitbox OFF", on and C.warning or C.error) end)
 
         local sCard = mkCard(tab, 130, 2)
         mkLabel(sCard, "📏 HITBOX SETTINGS", nil, nil, 10, 6)
@@ -2555,6 +2552,85 @@ end)
 
 -- Initial refresh
 task.delay(1, refreshPlayers)
+
+-- ═══ S31B: FPS/PING UPDATE LOOP ═══
+task.spawn(function()
+    local frameCount = 0
+    local lastTime = os.clock()
+    local fps = 60
+    local ping = 0
+
+    -- FPS counter via RenderStepped
+    addConn(RS.RenderStepped:Connect(function()
+        frameCount = frameCount + 1
+    end))
+
+    while st.running do
+        task.wait(0.5)
+        -- Calculate FPS
+        local now = os.clock()
+        local dt = now - lastTime
+        if dt > 0 then
+            fps = math.floor(frameCount / dt)
+            frameCount = 0
+            lastTime = now
+        end
+
+        -- Calculate Ping
+        pcall(function()
+            local stats = game:GetService("Stats")
+            local net = stats:FindFirstChild("PerformanceStats")
+            if net then
+                local pingItem = net:FindFirstChild("Ping")
+                if pingItem then ping = math.floor(pingItem:GetValue()) end
+            end
+        end)
+        -- Fallback ping method
+        if ping == 0 then
+            pcall(function()
+                ping = math.floor(player:GetNetworkPing() * 1000)
+            end)
+        end
+
+        -- Update watermark
+        if obj.watermark then
+            pcall(function()
+                obj.watermark.Text = string.format("🐍 MEDUSA v13 | %d FPS | %dms", fps, ping)
+            end)
+        end
+
+        -- Update topbar FPS/Ping label
+        if obj.fpsPingLabel then
+            pcall(function()
+                obj.fpsPingLabel.Text = string.format("%d FPS | %dms", fps, ping)
+            end)
+        end
+
+        -- Status pills are updated in the RenderStepped aimbot loop (S22)
+
+        -- Ghost Mode hover detection
+        if st.ghostMode and obj.panel then
+            pcall(function()
+                local mp = UIS:GetMouseLocation()
+                local pp = obj.panel.AbsolutePosition
+                local ps = obj.panel.AbsoluteSize
+                local isOver = mp.X >= pp.X and mp.X <= pp.X + ps.X and mp.Y >= pp.Y and mp.Y <= pp.Y + ps.Y
+                local targetTrans = isOver and cfg.gui.panelOpacity or 0.92
+                TS:Create(obj.panel, TweenInfo.new(0.3), {BackgroundTransparency = targetTrans}):Play()
+            end)
+        end
+
+        -- ESP auto-refresh
+        if st.esp then
+            local rem = cfg.espRefreshRate - (os.time() - lastESPRefresh)
+            if rem <= 0 then
+                clearESP()
+                task.wait(0.2)
+                lastESPRefresh = os.time()
+            end
+        end
+    end
+end)
 
 -- ═══ S32: STARTUP ═══
 -- Fade in
