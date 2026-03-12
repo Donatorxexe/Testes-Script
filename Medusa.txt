@@ -123,7 +123,16 @@ local obj = {
     titleLabel = nil, fpsPingLabel = nil,
     currentTab = "status", switchTab = nil,
     origLighting = {},
+    toggleRegistry = {}, -- key -> {setVisual = function(on)}
 }
+
+-- Sync a toggle's visual state when changed via keybind
+local function syncToggleVisual(key, on)
+    local reg = obj.toggleRegistry[key]
+    if reg and reg.setVisual then
+        pcall(reg.setVisual, on)
+    end
+end
 
 local keybinds = {
     esp = Enum.KeyCode.T, aimbot = Enum.KeyCode.G,
@@ -309,21 +318,27 @@ local function createGui(name)
     local sg = Instance.new("ScreenGui")
     sg.Name = name or "MedusaGui"
     sg.ResetOnSpawn = false
-    sg.DisplayOrder = 999999
+    sg.DisplayOrder = 2147483647 -- MAX INT — above everything
     sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    -- Discord/OBS protection
+    -- Discord/OBS/Stream protection
     pcall(function() sg.IgnoreGuiInset = true end)
-    -- Try to use CaptureService exclusion (modern Roblox)
+    -- Exclude from screenshot/capture (Roblox 2024+)
     pcall(function()
         local cs = game:GetService("CaptureService")
         if cs and cs.ExcludeFromCapture then
             cs:ExcludeFromCapture(sg)
         end
     end)
+    -- Try to prevent overlay detection
+    pcall(function()
+        RS:SetRobloxGuiFocused(false)
+    end)
+    -- Protect and parent
     if SP.active and SP.hiddenParent then
         if SP._protectFn then pcall(SP._protectFn, sg) end
         sg.Parent = SP.hiddenParent
     else
+        if SP._protectFn then pcall(SP._protectFn, sg) end
         sg.Parent = playerGui
     end
     table.insert(SP.allGuis, sg)
@@ -528,18 +543,35 @@ local function mkToggle(parent, txt, default, order, callback)
     end
 
     local isOn = default
-    tBtn.MouseButton1Click:Connect(function()
-        isOn = not isOn
+
+    -- Visual update function (reusable for bind sync)
+    local function setVisual(on)
+        isOn = on
         local onPos = UDim2.new(1, -(cfg.gui.toggleH - 2), 0.5, -(cfg.gui.toggleH - 4) / 2)
         local offPos = UDim2.new(0, 2, 0.5, -(cfg.gui.toggleH - 4) / 2)
-        TS:Create(knob, TweenInfo.new(0.2, Enum.EasingStyle.Back), {Position = isOn and onPos or offPos}):Play()
-        TS:Create(tBtn, TweenInfo.new(0.15), {BackgroundColor3 = isOn and C.accent or C.toggleOff}):Play()
-        if marker then marker.Text = isOn and "✓" or "" end
+        TS:Create(knob, TweenInfo.new(0.2, Enum.EasingStyle.Back), {Position = on and onPos or offPos}):Play()
+        TS:Create(tBtn, TweenInfo.new(0.15), {BackgroundColor3 = on and C.accent or C.toggleOff}):Play()
+        if marker then marker.Text = on and "✓" or "" end
+    end
+
+    tBtn.MouseButton1Click:Connect(function()
+        isOn = not isOn
+        setVisual(isOn)
         if callback then callback(isOn) end
     end)
 
     table.insert(obj.themeElements, {obj = tBtn, typ = "toggle", getState = function() return isOn end})
-    return row, tBtn, knob, isOn
+    return row, tBtn, knob, isOn, setVisual
+end
+
+-- Wrapper that auto-registers toggle for bind sync
+local function mkSyncToggle(parent, txt, stateKey, order, callback)
+    local row, tBtn, knob, isOn, setVisual = mkToggle(parent, txt, st[stateKey], order, function(on)
+        st[stateKey] = on
+        if callback then callback(on) end
+    end)
+    obj.toggleRegistry[stateKey] = { setVisual = setVisual }
+    return row, tBtn, knob, isOn, setVisual
 end
 
 local function mkSlider(parent, txt, initVal, minV, maxV, order, callback)
@@ -1069,10 +1101,10 @@ do
         tList.Padding = UDim.new(0, 2)
         tList.SortOrder = Enum.SortOrder.LayoutOrder
 
-        mkToggle(tInner, "🎯 Aimbot (RMB)", st.aimbot, 1, function(on) st.aimbot = on; if not on then rmbDown = false; obj.lockedTarget = nil end end)
-        mkToggle(tInner, "🔇 Silent Aim", st.silentAim, 2, function(on) st.silentAim = on; notify(on and "🔇 Silent Aim ON" or "❌ Silent Aim OFF", on and C.purple or C.error) end)
-        mkToggle(tInner, "🔫 Trigger Bot", st.triggerBot, 3, function(on) st.triggerBot = on; notify(on and "🔫 Trigger Bot ON" or "❌ Trigger Bot OFF", on and C.warning or C.error) end)
-        mkToggle(tInner, "📐 Prediction", st.prediction, 4, function(on) st.prediction = on; cfg.prediction = on end)
+        mkSyncToggle(tInner, "🎯 Aimbot (RMB)", "aimbot", 1, function(on) if not on then rmbDown = false; obj.lockedTarget = nil end end)
+        mkSyncToggle(tInner, "🔇 Silent Aim", "silentAim", 2, function(on) notify(on and "🔇 Silent Aim ON" or "❌ Silent Aim OFF", on and C.purple or C.error) end)
+        mkSyncToggle(tInner, "🔫 Trigger Bot", "triggerBot", 3, function(on) notify(on and "🔫 Trigger Bot ON" or "❌ Trigger Bot OFF", on and C.warning or C.error) end)
+        mkSyncToggle(tInner, "📐 Prediction", "prediction", 4, function(on) cfg.prediction = on end)
 
         -- Sliders
         local sCard = mkCard(tab, 220, 2)
@@ -1135,12 +1167,12 @@ do
         eList.Padding = UDim.new(0, 2)
         eList.SortOrder = Enum.SortOrder.LayoutOrder
 
-        mkToggle(eInner, "👁️ ESP (Highlights)", st.esp, 1, function(on) st.esp = on; if not on then clearESP() else lastESPRefresh = os.time() end; notify(on and "👁️ ESP ON" or "❌ ESP OFF", on and C.success or C.error) end)
-        mkToggle(eInner, "📦 3D Boxes", st.box3d, 2, function(on) st.box3d = on end)
-        mkToggle(eInner, "📏 Tracers", st.tracers, 3, function(on) st.tracers = on end)
-        mkToggle(eInner, "🦴 Skeleton", st.skeleton, 4, function(on) st.skeleton = on end)
-        mkToggle(eInner, "➕ Crosshair", st.crosshair, 5, function(on) st.crosshair = on end)
-        mkToggle(eInner, "🌈 Rainbow Mode", st.rainbow, 6, function(on) st.rainbow = on end)
+        mkSyncToggle(eInner, "👁️ ESP (Highlights)", "esp", 1, function(on) if not on then clearESP() else lastESPRefresh = os.time() end; notify(on and "👁️ ESP ON" or "❌ ESP OFF", on and C.success or C.error) end)
+        mkSyncToggle(eInner, "📦 3D Boxes", "box3d", 2, nil)
+        mkSyncToggle(eInner, "📏 Tracers", "tracers", 3, nil)
+        mkSyncToggle(eInner, "🦴 Skeleton", "skeleton", 4, nil)
+        mkSyncToggle(eInner, "➕ Crosshair", "crosshair", 5, nil)
+        mkSyncToggle(eInner, "🌈 Rainbow Mode", "rainbow", 6, nil)
 
         -- ESP sliders
         local sCard = mkCard(tab, 130, 2)
@@ -1166,7 +1198,7 @@ do
         wInner.Position = UDim2.new(0, 0, 0, 26)
         wInner.BackgroundTransparency = 1
         wInner.Parent = wCard
-        mkToggle(wInner, "💡 Fullbright", st.fullbright, 1, function(on) st.fullbright = on; setFullbright(on); notify(on and "💡 Fullbright ON" or "❌ Fullbright OFF", on and C.success or C.error) end)
+        mkSyncToggle(wInner, "💡 Fullbright", "fullbright", 1, function(on) setFullbright(on); notify(on and "💡 Fullbright ON" or "❌ Fullbright OFF", on and C.success or C.error) end)
 
         print("[Medusa] Tab Visuals OK")
     end
@@ -1188,13 +1220,48 @@ do
         mList.Padding = UDim.new(0, 2)
         mList.SortOrder = Enum.SortOrder.LayoutOrder
 
-        mkToggle(mInner, "✈️ Fly", st.fly, 1, function(on) st.fly = on; if on then enableFly() else disableFly() end; notify(on and "✈️ Fly ON" or "❌ Fly OFF", on and C.blue or C.error) end)
-        mkToggle(mInner, "👻 Noclip", st.noclip, 2, function(on) st.noclip = on; notify(on and "👻 Noclip ON" or "❌ Noclip OFF", on and C.success or C.error) end)
-        mkToggle(mInner, "🏃 Speed", st.speed, 3, function(on) st.speed = on; notify(on and "🏃 Speed ON" or "❌ Speed OFF", on and C.success or C.error) end)
-        mkToggle(mInner, "🦘 Infinite Jump", st.infJump, 4, function(on) st.infJump = on; notify(on and "🦘 Inf Jump ON" or "❌ Inf Jump OFF", on and C.success or C.error) end)
-        mkToggle(mInner, "🪂 No Fall Damage", st.noFallDmg, 5, function(on) st.noFallDmg = on; notify(on and "🪂 No Fall Dmg ON" or "❌ No Fall Dmg OFF", on and C.success or C.error) end)
-        mkToggle(mInner, "🖱️ Click TP (hold bind)", st.clickTP, 6, function(on) st.clickTP = on; notify(on and "🖱️ Click TP ON" or "❌ Click TP OFF", on and C.success or C.error) end)
-        mkToggle(mInner, "🌀 Spin Bot", st.spinBot, 7, function(on) st.spinBot = on; notify(on and "🌀 Spin Bot ON" or "❌ Spin Bot OFF", on and C.success or C.error) end)
+        mkSyncToggle(mInner, "✈️ Fly", "fly", 1, function(on)
+            if on then enableFly() else disableFly() end
+            notify(on and "✈️ Fly ON" or "❌ Fly OFF", on and C.blue or C.error)
+        end)
+        mkSyncToggle(mInner, "👻 Noclip", "noclip", 2, function(on)
+            if not on then
+                -- INSTANT RESET: re-enable collisions immediately
+                pcall(function()
+                    local char = player.Character
+                    if char then
+                        for _, p in ipairs(char:GetDescendants()) do
+                            if p:IsA("BasePart") then p.CanCollide = true end
+                        end
+                        local hrp = char:FindFirstChild("HumanoidRootPart")
+                        if hrp then hrp.Velocity = Vector3.zero end
+                    end
+                end)
+            end
+            notify(on and "👻 Noclip ON" or "❌ Noclip OFF", on and C.success or C.error)
+        end)
+        mkSyncToggle(mInner, "🏃 Speed", "speed", 3, function(on)
+            if not on then
+                -- INSTANT RESET: restore default walkspeed immediately
+                pcall(function()
+                    local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+                    if hum then hum.WalkSpeed = 16 end
+                end)
+            end
+            notify(on and "🏃 Speed ON" or "❌ Speed OFF", on and C.success or C.error)
+        end)
+        mkSyncToggle(mInner, "🦘 Infinite Jump", "infJump", 4, function(on)
+            notify(on and "🦘 Inf Jump ON" or "❌ Inf Jump OFF", on and C.success or C.error)
+        end)
+        mkSyncToggle(mInner, "🪂 No Fall Damage", "noFallDmg", 5, function(on)
+            notify(on and "🪂 No Fall Dmg ON" or "❌ No Fall Dmg OFF", on and C.success or C.error)
+        end)
+        mkSyncToggle(mInner, "🖱️ Click TP (hold bind)", "clickTP", 6, function(on)
+            notify(on and "🖱️ Click TP ON" or "❌ Click TP OFF", on and C.success or C.error)
+        end)
+        mkSyncToggle(mInner, "🌀 Spin Bot", "spinBot", 7, function(on)
+            notify(on and "🌀 Spin Bot ON" or "❌ Spin Bot OFF", on and C.success or C.error)
+        end)
 
         -- Sliders
         local sCard = mkCard(tab, 130, 2)
@@ -1232,7 +1299,7 @@ do
         hList.Padding = UDim.new(0, 2)
         hList.SortOrder = Enum.SortOrder.LayoutOrder
 
-        mkToggle(hInner, "📦 Hitbox Expander", st.hitbox, 1, function(on) st.hitbox = on; if not on then resetAllHitboxes() end; notify(on and "📦 Hitbox ON" or "❌ Hitbox OFF", on and C.warning or C.error) end)
+        mkSyncToggle(hInner, "📦 Hitbox Expander", "hitbox", 1, function(on) if not on then resetAllHitboxes() end; notify(on and "📦 Hitbox ON" or "❌ Hitbox OFF", on and C.warning or C.error) end)
 
         local sCard = mkCard(tab, 130, 2)
         mkLabel(sCard, "📏 HITBOX SETTINGS", nil, nil, 10, 6)
@@ -1300,17 +1367,23 @@ do
         mList.Padding = UDim.new(0, 2)
         mList.SortOrder = Enum.SortOrder.LayoutOrder
 
-        mkToggle(mInner, "🛡️ Anti-AFK", st.antiAfk, 1, function(on) st.antiAfk = on end)
-        mkToggle(mInner, "🔒 Stream Proof", st.streamProof, 2, function(on)
-            st.streamProof = on
+        mkSyncToggle(mInner, "🛡️ Anti-AFK", "antiAfk", 1, nil)
+        mkSyncToggle(mInner, "🔒 Stream Proof", "streamProof", 2, function(on)
             if on then
                 local ok = spEnable()
-                if not ok then st.streamProof = false; notify("⚠️ StreamProof unavailable", C.error, "❌") end
+                if not ok then
+                    st.streamProof = false
+                    syncToggleVisual("streamProof", false)
+                    notify("⚠️ StreamProof unavailable on this executor", C.error, "❌")
+                else
+                    notify("🔒 StreamProof ON (" .. SP.method .. ")", C.success, "🔒")
+                end
             else
                 spDisable()
+                notify("🔓 StreamProof OFF", C.textMuted)
             end
         end)
-        mkToggle(mInner, "👻 Ghost Mode", st.ghostMode, 3, function(on) st.ghostMode = on; setGhostMode(on) end)
+        mkSyncToggle(mInner, "👻 Ghost Mode", "ghostMode", 3, function(on) setGhostMode(on) end)
 
         -- Action buttons
         local aCard = mkCard(tab, 200, 2)
@@ -2200,74 +2273,100 @@ end)
 
 -- ═══ S29: INPUT HANDLER ═══
 local function toggleFeature(key)
-    if key == "esp" then
-        st.esp = not st.esp
-        if not st.esp then clearESP() else lastESPRefresh = os.time() end
-        notify(st.esp and "👁️ ESP ON" or "❌ ESP OFF", st.esp and C.success or C.error)
-    elseif key == "aimbot" then
-        st.aimbot = not st.aimbot
-        if not st.aimbot then rmbDown = false; obj.lockedTarget = nil end
-        notify(st.aimbot and "🎯 Aimbot ON" or "❌ Aimbot OFF", st.aimbot and C.purple or C.error)
-    elseif key == "silentAim" then
-        st.silentAim = not st.silentAim
-        notify(st.silentAim and "🔇 Silent Aim ON" or "❌ Silent Aim OFF", st.silentAim and C.purple or C.error)
-    elseif key == "triggerBot" then
-        st.triggerBot = not st.triggerBot
-        notify(st.triggerBot and "🔫 Trigger Bot ON" or "❌ Trigger Bot OFF", st.triggerBot and C.warning or C.error)
-    elseif key == "fly" then
-        st.fly = not st.fly
-        if st.fly then enableFly() else disableFly() end
-        notify(st.fly and "✈️ Fly ON" or "❌ Fly OFF", st.fly and C.blue or C.error)
-    elseif key == "noclip" then
-        st.noclip = not st.noclip
-        notify(st.noclip and "👻 Noclip ON" or "❌ Noclip OFF", st.noclip and C.success or C.error)
-    elseif key == "hitbox" then
-        st.hitbox = not st.hitbox
-        if not st.hitbox then resetAllHitboxes() end
-        notify(st.hitbox and "📦 Hitbox ON" or "❌ Hitbox OFF", st.hitbox and C.warning or C.error)
-    elseif key == "speed" then
-        st.speed = not st.speed
-        notify(st.speed and "🏃 Speed ON" or "❌ Speed OFF", st.speed and C.success or C.error)
-    elseif key == "infJump" then
-        st.infJump = not st.infJump
-        notify(st.infJump and "🦘 Inf Jump ON" or "❌ Inf Jump OFF", st.infJump and C.success or C.error)
-    elseif key == "fullbright" then
-        st.fullbright = not st.fullbright
-        setFullbright(st.fullbright)
-        notify(st.fullbright and "💡 Fullbright ON" or "❌ Fullbright OFF", st.fullbright and C.success or C.error)
-    elseif key == "noFallDmg" then
-        st.noFallDmg = not st.noFallDmg
-        notify(st.noFallDmg and "🪂 No Fall Dmg ON" or "❌ No Fall Dmg OFF", st.noFallDmg and C.success or C.error)
-    elseif key == "clickTP" then
-        st.clickTP = not st.clickTP
-        notify(st.clickTP and "🖱️ Click TP ON" or "❌ Click TP OFF", st.clickTP and C.success or C.error)
-    elseif key == "streamProof" then
-        st.streamProof = not st.streamProof
-        if st.streamProof then
-            if not spEnable() then st.streamProof = false; notify("⚠️ StreamProof unavailable", C.error) end
-        else spDisable() end
-        if st.streamProof then notify("🔒 StreamProof ON (" .. SP.method .. ")", C.success) end
-    elseif key == "ghostMode" then
-        st.ghostMode = not st.ghostMode
-        setGhostMode(st.ghostMode)
-        notify(st.ghostMode and "👻 Ghost Mode ON" or "❌ Ghost Mode OFF", st.ghostMode and C.success or C.error)
-    elseif key == "crosshair" then
-        st.crosshair = not st.crosshair
-        notify(st.crosshair and "➕ Crosshair ON" or "❌ Crosshair OFF", st.crosshair and C.success or C.error)
-    elseif key == "spinBot" then
-        st.spinBot = not st.spinBot
-        notify(st.spinBot and "🌀 Spin Bot ON" or "❌ Spin Bot OFF", st.spinBot and C.success or C.error)
-    elseif key == "toggleGui" then
+    if key == "toggleGui" then
         st.gui = not st.gui
         if obj.panel then obj.panel.Visible = st.gui end
         if obj.shadow then obj.shadow.Visible = st.gui end
+        return -- no sync needed for GUI toggle
+    end
+
+    -- Toggle the state
+    st[key] = not st[key]
+    local on = st[key]
+
+    -- ═══ SYNC VISUAL (toggle switch updates when using keybind) ═══
+    syncToggleVisual(key, on)
+
+    -- ═══ SIDE EFFECTS ═══
+    if key == "esp" then
+        if not on then clearESP() else lastESPRefresh = os.time() end
+        notify(on and "👁️ ESP ON" or "❌ ESP OFF", on and C.success or C.error)
+    elseif key == "aimbot" then
+        if not on then rmbDown = false; obj.lockedTarget = nil end
+        notify(on and "🎯 Aimbot ON" or "❌ Aimbot OFF", on and C.purple or C.error)
+    elseif key == "silentAim" then
+        notify(on and "🔇 Silent Aim ON" or "❌ Silent Aim OFF", on and C.purple or C.error)
+    elseif key == "triggerBot" then
+        notify(on and "🔫 Trigger Bot ON" or "❌ Trigger Bot OFF", on and C.warning or C.error)
+    elseif key == "fly" then
+        if on then enableFly() else disableFly() end
+        notify(on and "✈️ Fly ON" or "❌ Fly OFF", on and C.blue or C.error)
+    elseif key == "noclip" then
+        if not on then
+            -- INSTANT RESET: re-enable collisions in same frame
+            pcall(function()
+                local char = player.Character
+                if char then
+                    for _, p in ipairs(char:GetDescendants()) do
+                        if p:IsA("BasePart") then p.CanCollide = true end
+                    end
+                    local hrp = char:FindFirstChild("HumanoidRootPart")
+                    if hrp then hrp.Velocity = Vector3.zero end
+                end
+            end)
+        end
+        notify(on and "👻 Noclip ON" or "❌ Noclip OFF", on and C.success or C.error)
+    elseif key == "hitbox" then
+        if not on then resetAllHitboxes() end
+        notify(on and "📦 Hitbox ON" or "❌ Hitbox OFF", on and C.warning or C.error)
+    elseif key == "speed" then
+        if not on then
+            -- INSTANT RESET: restore default walkspeed in same frame
+            pcall(function()
+                local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+                if hum then hum.WalkSpeed = 16 end
+            end)
+        end
+        notify(on and "🏃 Speed ON" or "❌ Speed OFF", on and C.success or C.error)
+    elseif key == "infJump" then
+        notify(on and "🦘 Inf Jump ON" or "❌ Inf Jump OFF", on and C.success or C.error)
+    elseif key == "fullbright" then
+        setFullbright(on)
+        notify(on and "💡 Fullbright ON" or "❌ Fullbright OFF", on and C.success or C.error)
+    elseif key == "noFallDmg" then
+        notify(on and "🪂 No Fall Dmg ON" or "❌ No Fall Dmg OFF", on and C.success or C.error)
+    elseif key == "clickTP" then
+        notify(on and "🖱️ Click TP ON" or "❌ Click TP OFF", on and C.success or C.error)
+    elseif key == "streamProof" then
+        if on then
+            if not spEnable() then
+                st.streamProof = false
+                syncToggleVisual("streamProof", false)
+                notify("⚠️ StreamProof unavailable", C.error)
+            else
+                notify("🔒 StreamProof ON (" .. SP.method .. ")", C.success)
+            end
+        else
+            spDisable()
+            notify("🔓 StreamProof OFF", C.textMuted)
+        end
+    elseif key == "ghostMode" then
+        setGhostMode(on)
+        notify(on and "👻 Ghost Mode ON" or "❌ Ghost Mode OFF", on and C.success or C.error)
+    elseif key == "crosshair" then
+        notify(on and "➕ Crosshair ON" or "❌ Crosshair OFF", on and C.success or C.error)
+    elseif key == "spinBot" then
+        notify(on and "🌀 Spin Bot ON" or "❌ Spin Bot OFF", on and C.success or C.error)
     end
 end
 
 -- Panic
 local function doPanic()
     for k in pairs(st) do
-        if k ~= "running" and k ~= "gui" then st[k] = false end
+        if k ~= "running" and k ~= "gui" then
+            st[k] = false
+            syncToggleVisual(k, false) -- sync ALL toggles to OFF
+        end
     end
     rmbDown = false
     obj.lockedTarget = nil
@@ -2275,6 +2374,20 @@ local function doPanic()
     resetAllHitboxes()
     setFullbright(false)
     spDisable()
+    -- Instant reset noclip
+    pcall(function()
+        local char = player.Character
+        if char then
+            for _, p in ipairs(char:GetDescendants()) do
+                if p:IsA("BasePart") then p.CanCollide = true end
+            end
+        end
+    end)
+    -- Instant reset speed
+    pcall(function()
+        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = 16 end
+    end)
     notify("🚨 PANIC! All disabled", C.error, "🚨")
 end
 
