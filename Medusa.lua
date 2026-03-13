@@ -1079,29 +1079,46 @@ panelGrad.Color = ColorSequence.new({
 })
 panelGrad.Rotation = 145
 
--- ── Glass Sidebar ──────────────────────────────────────────
-local sidebar = Instance.new("Frame")
-sidebar.Size = UDim2.new(0, cfg.gui.sidebarW, 1, 0)
-sidebar.BackgroundColor3 = C.sidebar; sidebar.BackgroundTransparency = 0.25
-sidebar.BorderSizePixel = 0; sidebar.ZIndex = 3; sidebar.Parent = panel
-obj.sidebar = sidebar
+-- ── Glass Sidebar (ScrollingFrame for many tabs) ──────────
+local sidebarOuter = Instance.new("Frame")
+sidebarOuter.Size = UDim2.new(0, cfg.gui.sidebarW, 1, 0)
+sidebarOuter.BackgroundColor3 = C.sidebar; sidebarOuter.BackgroundTransparency = 0.25
+sidebarOuter.BorderSizePixel = 0; sidebarOuter.ZIndex = 3; sidebarOuter.ClipsDescendants = true
+sidebarOuter.Parent = panel
 
-local sideGrad = Instance.new("UIGradient", sidebar)
+local sideGrad = Instance.new("UIGradient", sidebarOuter)
 sideGrad.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(15, 15, 24)),
     ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 8, 14)),
 })
 sideGrad.Rotation = 180
 
+-- Scrollable inner container for tab buttons
+local sidebar = Instance.new("ScrollingFrame")
+sidebar.Size = UDim2.new(1, 0, 1, -cfg.gui.topbarH)
+sidebar.Position = UDim2.new(0, 0, 0, cfg.gui.topbarH)
+sidebar.BackgroundTransparency = 1; sidebar.BorderSizePixel = 0
+sidebar.ScrollBarThickness = 0; sidebar.ScrollingEnabled = true
+sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
+sidebar.AutomaticCanvasSize = Enum.AutomaticSize.Y
+sidebar.ScrollingDirection = Enum.ScrollingDirection.Y
+sidebar.ZIndex = 3; sidebar.Parent = sidebarOuter
+obj.sidebar = sidebarOuter -- store outer for theme changes
+
 local sidebarLine = Instance.new("Frame")
 sidebarLine.Size = UDim2.new(0, 1, 1, 0); sidebarLine.Position = UDim2.new(1, 0, 0, 0)
 sidebarLine.BackgroundColor3 = C.border; sidebarLine.BackgroundTransparency = 0.45
-sidebarLine.BorderSizePixel = 0; sidebarLine.ZIndex = 3; sidebarLine.Parent = sidebar
+sidebarLine.BorderSizePixel = 0; sidebarLine.ZIndex = 3; sidebarLine.Parent = sidebarOuter
 
--- Tab indicator with glow
+-- UIListLayout for tab buttons in sidebar
+local sideLayout = Instance.new("UIListLayout", sidebar)
+sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
+sideLayout.Padding = UDim.new(0, 0)
+
+-- Tab indicator with glow (inside scrollable sidebar)
 local tabIndicator = Instance.new("Frame")
 tabIndicator.Size = UDim2.new(0, 3, 0, 28)
-tabIndicator.Position = UDim2.new(0, 0, 0, cfg.gui.topbarH + 10)
+tabIndicator.Position = UDim2.new(0, 0, 0, 10)
 tabIndicator.BackgroundColor3 = C.accent; tabIndicator.BorderSizePixel = 0; tabIndicator.ZIndex = 5; tabIndicator.Parent = sidebar
 mkCorner(tabIndicator, 2)
 local indGlow = Instance.new("UIStroke", tabIndicator); indGlow.Color = C.accent; indGlow.Thickness = 3; indGlow.Transparency = 0.5
@@ -1182,7 +1199,7 @@ local TABS = {
 for i, tab in ipairs(TABS) do
     local tbtn = Instance.new("TextButton")
     tbtn.Size = UDim2.new(1, 0, 0, cfg.gui.sidebarW)
-    tbtn.Position = UDim2.new(0, 0, 0, cfg.gui.topbarH + (i - 1) * cfg.gui.sidebarW)
+    tbtn.LayoutOrder = i
     tbtn.BackgroundTransparency = 1; tbtn.Font = Enum.Font.Unknown
     tbtn.TextSize = 20; tbtn.TextColor3 = C.textMuted; tbtn.Text = tab.icon
     tbtn.ZIndex = 4; tbtn.Parent = sidebar
@@ -1249,9 +1266,19 @@ local function switchTab(id)
     end
     for i, tab in ipairs(TABS) do
         if tab.id == id then
+            -- Position relative to sidebar scroll container (no topbarH offset)
+            local yPos = (i - 1) * cfg.gui.sidebarW + (cfg.gui.sidebarW / 2) - 14
             TS:Create(tabIndicator, TweenInfo.new(0.25, Enum.EasingStyle.Back), {
-                Position = UDim2.new(0, 0, 0, cfg.gui.topbarH + (i - 1) * cfg.gui.sidebarW + (cfg.gui.sidebarW / 2) - 14)
+                Position = UDim2.new(0, 0, 0, yPos)
             }):Play()
+            -- Auto-scroll sidebar to show the active tab
+            pcall(function()
+                local maxScroll = sidebar.AbsoluteCanvasSize.Y - sidebar.AbsoluteSize.Y
+                if maxScroll > 0 then
+                    local scrollTo = math.clamp(yPos - sidebar.AbsoluteSize.Y / 2, 0, maxScroll)
+                    sidebar.CanvasPosition = Vector2.new(0, scrollTo)
+                end
+            end)
             break
         end
     end
@@ -2086,6 +2113,7 @@ local function addESP(plr)
         data.skelFolder = skelFolder
     end) end
     data.cn = RS.RenderStepped:Connect(function() pcall(function()
+        if not st.running then return end
         if not char or not char.Parent or not head.Parent then
             local d = obj.espObjs[plr]; if d then
                 pcall(function() if d.hl then d.hl:Destroy() end end)
@@ -2363,11 +2391,32 @@ local function doEject()
         end
     end)
     
-    -- Restore camera
-    pcall(function() camera.CameraSubject = player.Character and player.Character:FindFirstChildOfClass("Humanoid") end)
+    -- Restore camera FULLY (Fix: camera stuck after eject)
+    pcall(function() 
+        camera.CameraSubject = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+        camera.FieldOfView = 70
+        camera.CameraType = Enum.CameraType.Custom
+    end)
+    pcall(function()
+        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.CameraOffset = Vector3.new(0, 0, 0) end
+    end)
+    
+    -- Restore mouse cursor (Fix: invisible mouse after eject)
+    pcall(function() UIS.MouseIconEnabled = true end)
     
     -- Restore lighting
     pcall(function() setFullbright(false) end)
+    
+    -- Destroy cinematic screen if still exists
+    pcall(function()
+        for _, g in ipairs(playerGui:GetChildren()) do
+            if g.Name and g.Name:find("Cinematic") then g:Destroy() end
+        end
+        for _, g in ipairs(CoreGui:GetChildren()) do
+            if g.Name and g.Name:find("Cinematic") then g:Destroy() end
+        end
+    end)
     
     -- Clear globals
     if getgenv then getgenv().MedusaLoaded = false; getgenv().MedusaEject = nil end
@@ -2387,7 +2436,13 @@ addConn(UIS.InputBegan:Connect(function(i, gp)
     if not i.KeyCode then return end; local k = i.KeyCode
     if k == keybinds.panic then doPanic()
     elseif k == keybinds.eject then notify("🗑️ Ejecting...", C.error); task.delay(0.5, doEject)
-    elseif k == keybinds.toggleGui then st.guiVisible = not st.guiVisible; panel.Visible = st.guiVisible
+    elseif k == keybinds.toggleGui then 
+        st.guiVisible = not st.guiVisible; panel.Visible = st.guiVisible
+        -- INSTANT cursor hide when GUI closes (Fix: cursor ghost)
+        if not st.guiVisible then
+            pcall(function() if obj.cursorFrame then obj.cursorFrame.Visible = false end end)
+            pcall(function() UIS.MouseIconEnabled = true end)
+        end
     else for key, bind in pairs(keybinds) do if bind == k and key ~= "panic" and key ~= "eject" and key ~= "toggleGui" then toggleFeature(key); break end end end
 end))
 addConn(UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton2 then rmbDown = false; obj.lockedTarget = nil end end))
@@ -3131,123 +3186,9 @@ task.delay(0.7, function()
     for _, tf in pairs(obj.tabFrames) do pcall(function() tf.ScrollBarImageTransparency = 0.5 end) end
 end)
 
--- ── ACTIVE HUD (Toggle Status List — top right) ────────────
-pcall(function()
-    local hudGui = createGui("MedusaActiveHUD")
-    obj.activeHudGui = hudGui
-    
-    local hudFrame = Instance.new("Frame")
-    hudFrame.Size = UDim2.new(0, 170, 0, 20); hudFrame.Position = UDim2.new(1, -185, 0, 10)
-    hudFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 12); hudFrame.BackgroundTransparency = 0.35
-    hudFrame.BorderSizePixel = 0; hudFrame.Parent = hudGui
-    mkCorner(hudFrame, 8)
-    local hudSk = Instance.new("UIStroke", hudFrame); hudSk.Color = C.accent; hudSk.Thickness = 1; hudSk.Transparency = 0.6
-    table.insert(obj.themeElements, { obj = hudSk, prop = "Color" })
-    obj.activeHudFrame = hudFrame
-    
-    -- Auto-size layout
-    local hudList = Instance.new("UIListLayout", hudFrame)
-    hudList.Padding = UDim.new(0, 2); hudList.SortOrder = Enum.SortOrder.LayoutOrder
-    Instance.new("UIPadding", hudFrame).PaddingTop = UDim.new(0, 4)
-    
-    -- Header
-    local hudTitle = Instance.new("TextLabel")
-    hudTitle.Size = UDim2.new(1, -10, 0, 14); hudTitle.Position = UDim2.new(0, 5, 0, 0)
-    hudTitle.BackgroundTransparency = 1; hudTitle.Font = Enum.Font.GothamBold
-    hudTitle.TextSize = 9; hudTitle.TextColor3 = C.accent; hudTitle.TextXAlignment = Enum.TextXAlignment.Left
-    hudTitle.Text = "🐍 ACTIVE MODULES"; hudTitle.LayoutOrder = 0; hudTitle.Parent = hudFrame
-    table.insert(obj.themeElements, { obj = hudTitle, prop = "TextColor3" })
-    
-    -- Update loop (every 0.5s)
-    local hudLabels = {}
-    local trackedToggles = {
-        { key = "esp", name = "ESP", icon = "👁️" },
-        { key = "aimbot", name = "Aimbot", icon = "🎯" },
-        { key = "silentAim", name = "Silent", icon = "🔇" },
-        { key = "triggerBot", name = "Trigger", icon = "🔫" },
-        { key = "fly", name = "Fly", icon = "✈️" },
-        { key = "noclip", name = "Noclip", icon = "👻" },
-        { key = "speed", name = "Speed", icon = "🏃" },
-        { key = "hitbox", name = "Hitbox", icon = "📦" },
-        { key = "fullbright", name = "Light", icon = "💡" },
-        { key = "infJump", name = "InfJump", icon = "🦘" },
-    }
-    
-    -- Create labels for each toggle
-    for i, t in ipairs(trackedToggles) do
-        local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(1, -10, 0, 13); lbl.BackgroundTransparency = 1
-        lbl.Font = Enum.Font.GothamMedium; lbl.TextSize = 10
-        lbl.TextColor3 = Color3.fromRGB(34, 197, 94); lbl.TextXAlignment = Enum.TextXAlignment.Left
-        lbl.Text = t.icon .. " " .. t.name; lbl.LayoutOrder = i; lbl.Visible = false
-        lbl.Parent = hudFrame; hudLabels[t.key] = lbl
-    end
-    
-    addConn(RunService.Heartbeat:Connect(function()
-        local activeCount = 0
-        for _, t in ipairs(trackedToggles) do
-            local on = st[t.key] == true
-            local lbl = hudLabels[t.key]
-            if lbl then lbl.Visible = on end
-            if on then activeCount = activeCount + 1 end
-        end
-        -- Auto-resize frame
-        local newH = 22 + (activeCount * 15)
-        hudFrame.Size = UDim2.new(0, 170, 0, math.max(22, newH))
-        hudFrame.Visible = activeCount > 0
-    end))
-end)
+-- (Duplicate Active HUD removed — S31C handles it correctly)
 
--- ── CUSTOM CURSOR (RGB Crosshair that follows mouse) ───────
-pcall(function()
-    local curGui = createGui("MedusaCursor")
-    curGui.DisplayOrder = 2147483647
-    obj.cursorGui = curGui
-    
-    local cursorSize = 22
-    local curFrame = Instance.new("Frame")
-    curFrame.Size = UDim2.new(0, cursorSize, 0, cursorSize)
-    curFrame.BackgroundTransparency = 1; curFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-    curFrame.ZIndex = 100; curFrame.Parent = curGui
-    obj.cursorFrame = curFrame
-    
-    -- Crosshair lines (4 lines forming a +)
-    local lineW, lineH, gap = 8, 2, 3
-    local lines = {}
-    local lineData = {
-        { UDim2.new(0.5, -lineW - gap, 0.5, -lineH/2), UDim2.new(0, lineW, 0, lineH) },  -- left
-        { UDim2.new(0.5, gap, 0.5, -lineH/2), UDim2.new(0, lineW, 0, lineH) },            -- right
-        { UDim2.new(0.5, -lineH/2, 0.5, -lineW - gap), UDim2.new(0, lineH, 0, lineW) },  -- top
-        { UDim2.new(0.5, -lineH/2, 0.5, gap), UDim2.new(0, lineH, 0, lineW) },            -- bottom
-    }
-    for _, ld in ipairs(lineData) do
-        local line = Instance.new("Frame")
-        line.Position = ld[1]; line.Size = ld[2]
-        line.BackgroundColor3 = C.accent; line.BackgroundTransparency = 0.15
-        line.BorderSizePixel = 0; line.ZIndex = 101; line.Parent = curFrame
-        mkCorner(line, 1)
-        table.insert(obj.themeElements, { obj = line, prop = "BackgroundColor3" })
-        table.insert(lines, line)
-    end
-    
-    -- Center dot
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 3, 0, 3); dot.AnchorPoint = Vector2.new(0.5, 0.5)
-    dot.Position = UDim2.new(0.5, 0, 0.5, 0); dot.BackgroundColor3 = C.accent
-    dot.BackgroundTransparency = 0; dot.BorderSizePixel = 0; dot.ZIndex = 102; dot.Parent = curFrame
-    mkCorner(dot, 2)
-    table.insert(obj.themeElements, { obj = dot, prop = "BackgroundColor3" })
-    
-    -- Follow mouse (via RenderStepped for smoothness)
-    addConn(RunService.RenderStepped:Connect(function()
-        if curFrame and curFrame.Parent then
-            local mp = UIS:GetMouseLocation()
-            curFrame.Position = UDim2.new(0, mp.X, 0, mp.Y)
-            -- Only visible when panel is open
-            curFrame.Visible = (panel and panel.Visible == true and st.gui ~= false)
-        end
-    end))
-end)
+-- (Duplicate cursor removed — S31D handles it correctly)
 
 -- ── Close/Eject button ─────────────────────────────────────
 closeBtn.MouseButton1Click:Connect(function()
