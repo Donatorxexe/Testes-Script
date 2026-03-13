@@ -1,6 +1,6 @@
 --[[
     ╔══════════════════════════════════════════════════════════════╗
-    ║       🐍 MEDUSA v15.1 — DASHBOARD HORIZONTAL 🐍           ║
+    ║       🐍 MEDUSA v15.0 — DASHBOARD HORIZONTAL 🐍           ║
     ║                Made by .donatorexe.                         ║
     ║           Xeno Executor Optimized | .lua                    ║
     ╠══════════════════════════════════════════════════════════════╣
@@ -28,19 +28,6 @@ if getgenv and getgenv().MedusaLoaded then
     task.wait(0.5)
 end
 if getgenv then getgenv().MedusaLoaded = true end
-
--- S1.5: DISCORD WEBHOOK LOGGING
-local HttpService = getService("HttpService")
-local function logToDiscord(message)
-    if cfg.discordWebhook == "" then return end
-    local data = {
-        content = message
-    }
-    local encoded = HttpService:JSONEncode(data)
-    pcall(function()
-        game:HttpPost(cfg.discordWebhook, encoded)
-    end)
-end
 
 -- S2: POLYFILLS & XENO COMPATIBILITY
 if not task or not task.wait then
@@ -164,7 +151,7 @@ local cfg = {
     maxDistance = 1000, distMin = 50, distMax = 2000,
     teamCheck = true, visibleCheck = false, healthCheck = false, healthMin = 10,
     triggerFOV = 30, triggerDelay = 0.1,
-    espRefreshRate = 300, espDistance = 2000,
+    espRefreshRate = 30, espDistance = 2000,
     hitboxSize = 10, hitboxMin = 1, hitboxMax = 25, hitboxTransparency = 0.7,
     flySpeed = 150, flyMin = 50, flyMax = 300,
     walkSpeed = 16, speedMin = 16, speedMax = 200, spinSpeed = 10,
@@ -888,7 +875,7 @@ end
 local notifStack = {}
 local MAX_NOTIFS = 5
 
--- Premium Notification System v15.1
+-- Premium Notification System v15.0
 -- Notify(title, text, duration) OR notify(text, color) (backwards compatible)
 local function Notify(titleOrText, textOrColor, durationOrNil)
     local title, text, color, duration
@@ -953,7 +940,7 @@ local function Notify(titleOrText, textOrColor, durationOrNil)
     timeLbl.BackgroundTransparency = 1; timeLbl.Font = Enum.Font.Gotham
     timeLbl.TextSize = 9; timeLbl.TextColor3 = C.textMuted
     timeLbl.TextXAlignment = Enum.TextXAlignment.Left
-    timeLbl.Text = "MEDUSA v15.1 • " .. os.date("%H:%M:%S"); timeLbl.Parent = fr
+    timeLbl.Text = "MEDUSA v15.0 • " .. os.date("%H:%M:%S"); timeLbl.Parent = fr
 
     -- Progress bar (shrinks over duration)
     local prog = Instance.new("Frame")
@@ -1130,7 +1117,7 @@ local verBadge = Instance.new("TextLabel")
 verBadge.Size = UDim2.new(0, 48, 0, 18); verBadge.Position = UDim2.new(0, 148, 0.5, -9)
 verBadge.BackgroundColor3 = C.accent; verBadge.BackgroundTransparency = 0.8
 verBadge.BorderSizePixel = 0; verBadge.Font = Enum.Font.GothamBold
-verBadge.TextSize = 9; verBadge.TextColor3 = C.accent; verBadge.Text = "v15.1"
+verBadge.TextSize = 9; verBadge.TextColor3 = C.accent; verBadge.Text = "v15.0"
 verBadge.ZIndex = 5; verBadge.Parent = topbar; mkCorner(verBadge, 6)
 table.insert(obj.themeElements, { obj = verBadge, prop = "TextColor3" })
 table.insert(obj.themeElements, { obj = verBadge, prop = "BackgroundColor3" })
@@ -1290,7 +1277,7 @@ obj.wmLabel.Size = UDim2.new(1, -26, 1, 0); obj.wmLabel.Position = UDim2.new(0, 
 obj.wmLabel.BackgroundTransparency = 1; obj.wmLabel.Font = Enum.Font.GothamMedium
 obj.wmLabel.TextSize = 11; obj.wmLabel.TextColor3 = C.text
 obj.wmLabel.TextXAlignment = Enum.TextXAlignment.Left
-obj.wmLabel.Text = "🐍 MEDUSA v15.1  |  👤 " .. myRegion .. "  |  🖥️ " .. svRegion .. "  |  📡 --ms  |  🚀 -- FPS"; obj.wmLabel.Parent = wmPill
+obj.wmLabel.Text = "🐍 MEDUSA v15.0  |  👤 " .. myRegion .. "  |  🖥️ " .. svRegion .. "  |  📡 --ms  |  🚀 -- FPS"; obj.wmLabel.Parent = wmPill
 
 makeDraggable(wmPill, wmPill)
 
@@ -1300,7 +1287,7 @@ task.spawn(function()
     while st.running do
         task.wait(0.5)
         pcall(function()
-            obj.wmLabel.Text = "🐍 MEDUSA v15.1  |  👤 " .. myRegion .. "  |  🖥️ " .. svRegion .. "  |  📡 " .. obj.wmPing .. "ms  |  🚀 " .. obj.wmFps .. " FPS"
+            obj.wmLabel.Text = "🐍 MEDUSA v15.0  |  👤 " .. myRegion .. "  |  🖥️ " .. svRegion .. "  |  📡 " .. obj.wmPing .. "ms  |  🚀 " .. obj.wmFps .. " FPS"
             dotPhase = dotPhase + 0.3
             wmDot.BackgroundTransparency = math.sin(dotPhase) * 0.3 + 0.1
         end)
@@ -1331,7 +1318,7 @@ do local tab = obj.tabFrames["status"]; if tab then
     local kfCard = mkCard(tab, 78, 3); mkLabel(kfCard, "☠️ KILL FEED", cfg.gui.fontSize, C.textMuted, 12, 6)
     obj.killFeedLabel = mkLabel(kfCard, "No kills yet", 10, C.textMuted, 12, 28, 1, 42); obj.killFeedLabel.TextWrapped = true; obj.killFeedLabel.TextYAlignment = Enum.TextYAlignment.Top
     local timerCard = mkCard(tab, 38, 4); obj.statusPills["espTimer"] = { label = mkLabel(timerCard, "🔄 ESP Refresh: --", 10, C.textMuted, 12, 8) }
-    local credCard = mkCard(tab, 38, 5); mkLabel(credCard, "🐍 Medusa v15.1 Dashboard Horizontal — Made by .donatorexe.", 10, C.textMuted, 12, 8)
+    local credCard = mkCard(tab, 38, 5); mkLabel(credCard, "🐍 Medusa v15.0 Dashboard Horizontal — Made by .donatorexe.", 10, C.textMuted, 12, 8)
 end end
 
 -- S12: AIMBOT
@@ -2180,7 +2167,7 @@ task.spawn(function()
                 local payload = {
                     content = nil,
                     embeds = {{
-                        title = "🐍 MEDUSA v15.1 — Live Status",
+                        title = "🐍 MEDUSA v15.0 — Live Status",
                         color = 56540, -- teal
                         fields = {
                             { name = "🎮 Game", value = "Roblox — " .. (game.Name or "Unknown"), inline = true },
@@ -2190,7 +2177,7 @@ task.spawn(function()
                             { name = "☠️ Kills This Session", value = tostring(kills), inline = true },
                             { name = "👥 Players", value = tostring(#Players:GetPlayers()) .. "/" .. tostring(Players.MaxPlayers), inline = true },
                         },
-                        footer = { text = "Medusa v15.1 — Made by .donatorexe. | " .. os.date("%H:%M:%S") },
+                        footer = { text = "Medusa v15.0 — Made by .donatorexe. | " .. os.date("%H:%M:%S") },
                     }},
                 }
                 local jsonPayload = HttpService:JSONEncode(payload)
@@ -2337,7 +2324,7 @@ local function doEject()
     if getgenv then getgenv().MedusaLoaded = false; getgenv().MedusaEject = nil end
     
     print("═══════════════════════════════════════")
-    print("  🐍 MEDUSA v15.1 — Ejected cleanly")
+    print("  🐍 MEDUSA v15.0 — Ejected cleanly")
     print("  All connections disconnected")
     print("  All GUIs destroyed")
     print("  Memory freed")
@@ -2651,7 +2638,7 @@ end
 task.spawn(function() while st.running do task.wait(5); if obj.currentTab == "players" then pcall(function() refreshPlayers() end) end end end)
 
 -- ══════════════════════════════════════════════════════════════
---  S32: INTRO ANIMATION & STARTUP (v15.1 Dashboard Horizontal)
+--  S32: INTRO ANIMATION & STARTUP (v15.0 Dashboard Horizontal)
 -- ══════════════════════════════════════════════════════════════
 switchTab("status")
 pcall(function() refreshPlayers() end)
@@ -2731,16 +2718,15 @@ end)
 
 -- Final welcome notification
 task.delay(1, function()
-    Notify("🐍 MEDUSA v15.1", "Dashboard Horizontal loaded successfully!", 4)
-    logToDiscord("🐍 MEDUSA v15.1 loaded by " .. player.Name .. " in " .. game.PlaceId)
+    Notify("🐍 MEDUSA v15.0", "Dashboard Horizontal loaded successfully!", 4)
 end)
 
 print("═══════════════════════════════════════")
-print("  🐍 MEDUSA v15.1 — DASHBOARD HORIZONTAL")
+print("  🐍 MEDUSA v15.0 — DASHBOARD HORIZONTAL")
 print("  Made by .donatorexe.")
 print("  Xeno Executor Optimized")
 print("  48 features • 10 tabs • Glassmorphism")
-print("  Premium Notification System v15.1")
+print("  Premium Notification System v15.0")
 print("  Intro Animation • Ghost Mode • Memory Safe")
 print("═══════════════════════════════════════")
-print("Medusa v15.1: Dashboard Horizontal Build Concluido")
+print("Medusa v15.0: Dashboard Horizontal Build Concluido")
