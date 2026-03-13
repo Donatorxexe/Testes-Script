@@ -1146,8 +1146,8 @@ panelGrad.Rotation = 145
 -- ── Glass Sidebar (ScrollingFrame for many tabs) ──────────
 local sidebarOuter = Instance.new("Frame")
 sidebarOuter.Size = UDim2.new(0, cfg.gui.sidebarW, 1, 0)
-sidebarOuter.BackgroundColor3 = C.sidebar; sidebarOuter.BackgroundTransparency = 0.25
-sidebarOuter.BorderSizePixel = 0; sidebarOuter.ZIndex = 3; sidebarOuter.ClipsDescendants = false
+sidebarOuter.BackgroundColor3 = Color3.fromRGB(8, 8, 14); sidebarOuter.BackgroundTransparency = 0
+sidebarOuter.BorderSizePixel = 0; sidebarOuter.ZIndex = 3; sidebarOuter.ClipsDescendants = true
 sidebarOuter.Parent = panel
 
 local sideGrad = Instance.new("UIGradient", sidebarOuter)
@@ -1166,7 +1166,7 @@ sidebar.ScrollBarThickness = 0; sidebar.ScrollingEnabled = true
 sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
 sidebar.AutomaticCanvasSize = Enum.AutomaticSize.Y
 sidebar.ScrollingDirection = Enum.ScrollingDirection.Y
-sidebar.ZIndex = 3; sidebar.ClipsDescendants = false
+sidebar.ZIndex = 3; sidebar.ClipsDescendants = true
 sidebar.Parent = sidebarOuter
 obj.sidebar = sidebarOuter -- store outer for theme changes
 
@@ -1178,12 +1178,12 @@ sidebarLine.BorderSizePixel = 0; sidebarLine.ZIndex = 3; sidebarLine.Parent = si
 -- UIListLayout for tab buttons in sidebar (MANDATORY for non-overlapping)
 local sideLayout = Instance.new("UIListLayout", sidebar)
 sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
-sideLayout.Padding = UDim.new(0, 4)
+sideLayout.Padding = UDim.new(0, 10)
 sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 sideLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 local sidePad = Instance.new("UIPadding", sidebar)
-sidePad.PaddingTop = UDim.new(0, 4); sidePad.PaddingBottom = UDim.new(0, 4)
-sidePad.PaddingLeft = UDim.new(0, 2); sidePad.PaddingRight = UDim.new(0, 2)
+sidePad.PaddingTop = UDim.new(0, 8); sidePad.PaddingBottom = UDim.new(0, 8)
+sidePad.PaddingLeft = UDim.new(0, 4); sidePad.PaddingRight = UDim.new(0, 4)
 
 -- Tab indicator with glow (inside scrollable sidebar)
 local tabIndicator = Instance.new("Frame")
@@ -1268,11 +1268,11 @@ local TABS = {
 -- Create tab buttons and scroll frames
 for i, tab in ipairs(TABS) do
     local tbtn = Instance.new("TextButton")
-    tbtn.Size = UDim2.new(0, 50, 0, 42)
+    tbtn.Size = UDim2.new(0, 50, 0, 45)
     tbtn.LayoutOrder = i
     tbtn.BackgroundTransparency = 1; tbtn.BorderSizePixel = 0
-    tbtn.Font = Enum.Font.Unknown
-    tbtn.TextSize = 20; tbtn.TextColor3 = C.textMuted; tbtn.Text = tab.icon
+    tbtn.Font = Enum.Font.GothamBold
+    tbtn.TextSize = 22; tbtn.TextColor3 = C.textMuted; tbtn.Text = tab.icon
     tbtn.ZIndex = 5; tbtn.Parent = sidebar
     tbtn.AutoButtonColor = false
 
@@ -1341,8 +1341,8 @@ local function switchTab(id)
     for i, tab in ipairs(TABS) do
         if tab.id == id then
             -- Position relative to sidebar scroll container
-            -- Each tab = 42px height + 4px padding + 4px top padding
-            local yPos = 4 + (i - 1) * (42 + 4) + 7
+            -- Each tab = 45px height + 10px padding + 8px top padding
+            local yPos = 8 + (i - 1) * (45 + 10) + 8
             TS:Create(tabIndicator, TweenInfo.new(0.25, Enum.EasingStyle.Back), {
                 Position = UDim2.new(0, 0, 0, yPos)
             }):Play()
@@ -1550,8 +1550,8 @@ end end
 
 -- S14: MOVEMENT
 do local tab = obj.tabFrames["movement"]; if tab then
-    local mc = mkCard(tab, 310, 1); mkLabel(mc, "🏃 MOVEMENT", cfg.gui.fontSize, C.textMuted, 12, 6)
-    local mi = Instance.new("Frame"); mi.Size = UDim2.new(1, -18, 0, 280); mi.Position = UDim2.new(0, 9, 0, 28); mi.BackgroundTransparency = 1; mi.Parent = mc
+    local mc = mkCard(tab, 390, 1); mkLabel(mc, "🏃 MOVEMENT", cfg.gui.fontSize, C.textMuted, 12, 6)
+    local mi = Instance.new("Frame"); mi.Size = UDim2.new(1, -18, 0, 355); mi.Position = UDim2.new(0, 9, 0, 28); mi.BackgroundTransparency = 1; mi.Parent = mc
     local mil = Instance.new("UIListLayout", mi); mil.Padding = UDim.new(0, 4)
     mkSyncToggle(mi, "✈️ Fly", "fly", 1, function(on) if on then pcall(function() enableFly() end) else pcall(function() disableFly() end) end; notify(on and "✈️ Fly ON" or "❌ OFF", on and C.blue or C.error) end)
     mkSyncToggle(mi, "👻 Noclip", "noclip", 2, function(on) 
@@ -1575,9 +1575,10 @@ do local tab = obj.tabFrames["movement"]; if tab then
     mkSlider(mi, "✈️ Fly Speed", cfg.flySpeed, cfg.flyMin, cfg.flyMax, 7, function(v) cfg.flySpeed = v end)
     mkSlider(mi, "🏃 Walk Speed", cfg.walkSpeed, cfg.speedMin, cfg.speedMax, 8, function(v) cfg.walkSpeed = v end)
 
-    local sc = mkCard(tab, 44, 2); mkLabel(sc, "🌀 SPINBOT", cfg.gui.fontSize, C.textMuted, 12, 6)
-    local si2 = Instance.new("Frame"); si2.Size = UDim2.new(1, -18, 0, 14); si2.Position = UDim2.new(0, 9, 0, 0); si2.BackgroundTransparency = 1; si2.Parent = sc
-    mkSyncToggle(sc, "🌀 SpinBot", "spinBot", 1, function(on) notify(on and "🌀 ON" or "❌ OFF", on and C.pink or C.error) end)
+    local sc = mkCard(tab, 62, 2); mkLabel(sc, "🌀 SPINBOT", cfg.gui.fontSize, C.textMuted, 12, 6)
+    local si2 = Instance.new("Frame"); si2.Size = UDim2.new(1, -18, 0, 30); si2.Position = UDim2.new(0, 9, 0, 28); si2.BackgroundTransparency = 1; si2.Parent = sc
+    local si2l = Instance.new("UIListLayout", si2); si2l.Padding = UDim.new(0, 4)
+    mkSyncToggle(si2, "🌀 SpinBot", "spinBot", 1, function(on) notify(on and "🌀 ON" or "❌ OFF", on and C.pink or C.error) end)
 end end
 
 -- S15: COMBAT
@@ -2604,39 +2605,50 @@ local function doEject()
     pcall(function()
         local char = player.Character
         if char then
-            -- FIRST: Desancorar HRP (pode estar ancorado do fly)
             local hrp = char:FindFirstChild("HumanoidRootPart")
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            
+            -- FIRST: ANCHOR the HRP to freeze physics, kill all velocity
             if hrp then 
-                hrp.Anchored = false
-                hrp.CanCollide = true
-                hrp.CanTouch = true
+                hrp.Anchored = true
                 hrp.Velocity = Vector3.new(0, 0, 0)
                 hrp.RotVelocity = Vector3.new(0, 0, 0)
             end
             
-            -- SECOND: Iterate ALL descendants — restore CanCollide + CanTouch + destroy physics
+            -- SECOND: Wait for physics engine to process the anchor
+            task.wait(0.1)
+            
+            -- THIRD: Destroy ALL physics objects FIRST
             for _, p in ipairs(char:GetDescendants()) do
-                if p:IsA("BasePart") then 
-                    p.CanCollide = true
-                    p.CanTouch = true
-                    p.Anchored = false
-                end
                 if p:IsA("BodyVelocity") or p:IsA("BodyGyro") or p:IsA("BodyPosition") or p:IsA("BodyAngularVelocity") then 
                     p:Destroy() 
                 end
             end
             
-            -- THIRD: Restore Humanoid properties
-            local hum = char:FindFirstChildOfClass("Humanoid")
+            -- FOURTH: Restore CanCollide on ALL parts WHILE anchored
+            for _, p in ipairs(char:GetDescendants()) do
+                if p:IsA("BasePart") then 
+                    p.CanCollide = true
+                    p.CanTouch = true
+                end
+            end
+            
+            -- FIFTH: Restore Humanoid properties
             if hum then 
                 hum.WalkSpeed = 16
                 hum.JumpPower = 50
                 hum.CameraOffset = Vector3.new(0, 0, 0)
-                -- CRITICAL: Force physics engine to recalculate collision
-                hum:ChangeState(Enum.HumanoidStateType.GettingUp)
             end
             
-            -- FOURTH: Wait and force AGAIN (double safety net)
+            -- SIXTH: Wait again, then UNANCHOR and force physics recalc
+            task.wait(0.1)
+            if hrp then 
+                hrp.Anchored = false
+                hrp.CanCollide = true
+            end
+            if hum then hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
+            
+            -- SEVENTH: Final safety pass
             task.wait(0.1)
             if hum then hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
             if hrp then hrp.CanCollide = true; hrp.CanTouch = true; hrp.Anchored = false end
