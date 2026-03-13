@@ -192,7 +192,7 @@ local cfg = {
     -- RGB
     rgb = { stroke = false, title = false, indicator = false, speed = 1, saturation = 1, brightness = 1 },
     gui = {
-        panelW = 680, panelH = 540, sidebarW = 52, topbarH = 48,
+panelW = 680, panelH = 540, sidebarW = 70, topbarH = 48,
         fontSize = 12, titleSize = 18, cardSpacing = 10, cardPadding = 12,
         borderWidth = 1.5, cornerRadius = 14,
         toggleW = 40, toggleH = 20, sliderH = 10, btnH = 36,
@@ -1147,7 +1147,7 @@ panelGrad.Rotation = 145
 local sidebarOuter = Instance.new("Frame")
 sidebarOuter.Size = UDim2.new(0, cfg.gui.sidebarW, 1, 0)
 sidebarOuter.BackgroundColor3 = C.sidebar; sidebarOuter.BackgroundTransparency = 0.25
-sidebarOuter.BorderSizePixel = 0; sidebarOuter.ZIndex = 3; sidebarOuter.ClipsDescendants = true
+sidebarOuter.BorderSizePixel = 0; sidebarOuter.ZIndex = 3; sidebarOuter.ClipsDescendants = false
 sidebarOuter.Parent = panel
 
 local sideGrad = Instance.new("UIGradient", sidebarOuter)
@@ -1163,10 +1163,10 @@ sidebar.Size = UDim2.new(1, 0, 1, -cfg.gui.topbarH)
 sidebar.Position = UDim2.new(0, 0, 0, cfg.gui.topbarH)
 sidebar.BackgroundTransparency = 1; sidebar.BorderSizePixel = 0
 sidebar.ScrollBarThickness = 0; sidebar.ScrollingEnabled = true
-sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
-sidebar.AutomaticCanvasSize = Enum.AutomaticSize.Y
+sidebar.CanvasSize = UDim2.new(0, 0, 0, 1200)
 sidebar.ScrollingDirection = Enum.ScrollingDirection.Y
-sidebar.ZIndex = 3; sidebar.Parent = sidebarOuter
+sidebar.ZIndex = 3; sidebar.ClipsDescendants = false
+sidebar.Parent = sidebarOuter
 obj.sidebar = sidebarOuter -- store outer for theme changes
 
 local sidebarLine = Instance.new("Frame")
@@ -1177,11 +1177,12 @@ sidebarLine.BorderSizePixel = 0; sidebarLine.ZIndex = 3; sidebarLine.Parent = si
 -- UIListLayout for tab buttons in sidebar (MANDATORY for non-overlapping)
 local sideLayout = Instance.new("UIListLayout", sidebar)
 sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
-sideLayout.Padding = UDim.new(0, 6)
+sideLayout.Padding = UDim.new(0, 12)
 sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+sideLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 local sidePad = Instance.new("UIPadding", sidebar)
-sidePad.PaddingTop = UDim.new(0, 6); sidePad.PaddingBottom = UDim.new(0, 6)
-sidePad.PaddingLeft = UDim.new(0, 2); sidePad.PaddingRight = UDim.new(0, 2)
+sidePad.PaddingTop = UDim.new(0, 8); sidePad.PaddingBottom = UDim.new(0, 8)
+sidePad.PaddingLeft = UDim.new(0, 4); sidePad.PaddingRight = UDim.new(0, 4)
 
 -- Tab indicator with glow (inside scrollable sidebar)
 local tabIndicator = Instance.new("Frame")
@@ -1266,11 +1267,11 @@ local TABS = {
 -- Create tab buttons and scroll frames
 for i, tab in ipairs(TABS) do
     local tbtn = Instance.new("TextButton")
-    tbtn.Size = UDim2.new(1, -4, 0, 38)
+    tbtn.Size = UDim2.new(0, 50, 0, 50)
     tbtn.LayoutOrder = i
     tbtn.BackgroundTransparency = 1; tbtn.BorderSizePixel = 0
     tbtn.Font = Enum.Font.Unknown
-    tbtn.TextSize = 20; tbtn.TextColor3 = C.textMuted; tbtn.Text = tab.icon
+    tbtn.TextSize = 22; tbtn.TextColor3 = C.textMuted; tbtn.Text = tab.icon
     tbtn.ZIndex = 5; tbtn.Parent = sidebar
     tbtn.AutoButtonColor = false
 
@@ -1336,8 +1337,9 @@ local function switchTab(id)
     end
     for i, tab in ipairs(TABS) do
         if tab.id == id then
-            -- Position relative to sidebar scroll container (no topbarH offset)
-            local yPos = (i - 1) * cfg.gui.sidebarW + (cfg.gui.sidebarW / 2) - 14
+            -- Position relative to sidebar scroll container
+            -- Each tab = 50px height + 12px padding + 8px top padding
+            local yPos = 8 + (i - 1) * (50 + 12) + 25 - 14
             TS:Create(tabIndicator, TweenInfo.new(0.25, Enum.EasingStyle.Back), {
                 Position = UDim2.new(0, 0, 0, yPos)
             }):Play()
@@ -1723,7 +1725,8 @@ do local tab = obj.tabFrames["binds"]; if tab then
         l.TextXAlignment = Enum.TextXAlignment.Left; l.Text = bindNames[key] or key; l.Parent = r
         
         -- Botão pequeno quadrado à direita com a tecla [G]
-        local b = Instance.new("TextButton"); b.Size = UDim2.new(0, 52, 0, 22); b.Position = UDim2.new(1, -58, 0.5, -11)
+        local b = Instance.new("TextButton"); b.Size = UDim2.new(0, 60, 0, 25)
+        b.AnchorPoint = Vector2.new(1, 0.5); b.Position = UDim2.new(1, -10, 0.5, 0)
         b.BackgroundColor3 = C.bgDark; b.BackgroundTransparency = 0.3; b.BorderSizePixel = 0; b.AutoButtonColor = false
         b.Font = Enum.Font.GothamBold; b.TextSize = 10; b.TextColor3 = C.accent
         b.Text = "[" .. (keybinds[key] and keybinds[key].Name or "?") .. "]"; b.Parent = r; mkCorner(b, 5)
@@ -1936,7 +1939,7 @@ do local tab = obj.tabFrames["gui"]; if tab then
     local ti = Instance.new("Frame"); ti.Size = UDim2.new(1, -18, 0, 35); ti.Position = UDim2.new(0, 9, 0, 28); ti.BackgroundTransparency = 1; ti.Parent = tc
     mkSlider(ti, "🔤 Corner Radius", cfg.gui.cornerRadius, 0, 24, 1, function(v) cfg.gui.cornerRadius = v end)
     mkBtn(tab, "🔄 Reset GUI", C.warning, 10, function()
-        cfg.gui = { panelW = 680, panelH = 540, sidebarW = 52, topbarH = 48, fontSize = 12, titleSize = 18, cardSpacing = 10, cardPadding = 12, borderWidth = 1.5, cornerRadius = 14, toggleW = 40, toggleH = 20, sliderH = 10, btnH = 36, panelOpacity = 0.12, accentR = 0, accentG = 220, accentB = 180, bgR = 12, bgG = 12, bgB = 18, sideR = 10, sideG = 10, sideB = 16 }
+        cfg.gui = { panelW = 680, panelH = 540, sidebarW = 70, topbarH = 48, fontSize = 12, titleSize = 18, cardSpacing = 10, cardPadding = 12, borderWidth = 1.5, cornerRadius = 14, toggleW = 40, toggleH = 20, sliderH = 10, btnH = 36, panelOpacity = 0.12, accentR = 0, accentG = 220, accentB = 180, bgR = 12, bgG = 12, bgB = 18, sideR = 10, sideG = 10, sideB = 16 }
         panel.Size = UDim2.new(0, 680, 0, 540); panel.BackgroundTransparency = 0.12; applyTheme(Color3.fromRGB(0, 220, 180)); notify("🔄 GUI Reset!", C.warning)
     end)
 end end
@@ -2589,14 +2592,38 @@ local function doEject()
     st.infJump = false
     st.spinBot = false
     
-    -- Step 2: Wait 1 frame so the Stepped loop can check st.noclip=false and stop
+    -- Step 2: Wait MULTIPLE frames so all Stepped/RenderStepped loops die
     pcall(function() RunService.Stepped:Wait() end)
+    pcall(function() RunService.Stepped:Wait() end)
+    pcall(function() task.wait(0.2) end)
     
-    -- Step 3: Force restore ALL collision on ALL character parts
+    -- Step 3: FORCE BRUTE restore ALL collision on ALL character parts
     pcall(function()
         local char = player.Character
         if char then
-            -- Restore Humanoid properties
+            -- FIRST: Desancorar HRP (pode estar ancorado do fly)
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then 
+                hrp.Anchored = false
+                hrp.CanCollide = true
+                hrp.CanTouch = true
+                hrp.Velocity = Vector3.new(0, 0, 0)
+                hrp.RotVelocity = Vector3.new(0, 0, 0)
+            end
+            
+            -- SECOND: Iterate ALL descendants — restore CanCollide + CanTouch + destroy physics
+            for _, p in ipairs(char:GetDescendants()) do
+                if p:IsA("BasePart") then 
+                    p.CanCollide = true
+                    p.CanTouch = true
+                    p.Anchored = false
+                end
+                if p:IsA("BodyVelocity") or p:IsA("BodyGyro") or p:IsA("BodyPosition") or p:IsA("BodyAngularVelocity") then 
+                    p:Destroy() 
+                end
+            end
+            
+            -- THIRD: Restore Humanoid properties
             local hum = char:FindFirstChildOfClass("Humanoid")
             if hum then 
                 hum.WalkSpeed = 16
@@ -2606,35 +2633,22 @@ local function doEject()
                 hum:ChangeState(Enum.HumanoidStateType.GettingUp)
             end
             
-            -- Force HRP collision ON + zero velocity
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp then 
-                hrp.CanCollide = true
-                hrp.Velocity = Vector3.new(0, 0, 0)
-                -- Also reset RotVelocity (prevents spinning after fling)
-                hrp.RotVelocity = Vector3.new(0, 0, 0)
-            end
+            -- FOURTH: Wait and force AGAIN (double safety net)
+            task.wait(0.1)
+            if hum then hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
+            if hrp then hrp.CanCollide = true; hrp.CanTouch = true; hrp.Anchored = false end
             
-            -- Iterate ALL descendants — restore CanCollide and destroy fly objects
-            for _, p in ipairs(char:GetDescendants()) do
-                if p:IsA("BasePart") then 
-                    p.CanCollide = true 
-                end
-                if p:IsA("BodyVelocity") or p:IsA("BodyGyro") or p:IsA("BodyPosition") or p:IsA("BodyAngularVelocity") then 
-                    p:Destroy() 
-                end
-            end
-            
-            -- Force another state change to ensure collision sticks
-            if hum then
-                task.delay(0.1, function()
-                    pcall(function()
-                        hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-                        -- Final CanCollide enforcement
-                        if hrp then hrp.CanCollide = true end
-                    end)
+            -- FIFTH: Final pass after 0.2s (triple safety)
+            task.delay(0.2, function()
+                pcall(function()
+                    if char and char.Parent then
+                        for _, p in ipairs(char:GetDescendants()) do
+                            if p:IsA("BasePart") then p.CanCollide = true; p.CanTouch = true end
+                        end
+                        if hum then hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
+                    end
                 end)
-            end
+            end)
         end
     end)
     
@@ -3053,7 +3067,7 @@ do
         { key = "speed",     name = "🏃 Speed" },
         { key = "infJump",   name = "🦘 Inf Jump" },
         { key = "hitbox",    name = "📦 Hitbox" },
-        { key = "spinBot",   name = "🔄 SpinBot" },
+        { key = "spinBot",   name = "�� SpinBot" },
         { key = "fullbright",name = "💡 Fullbright" },
         { key = "crosshair", name = "➕ Crosshair" },
         { key = "viewAngles",name = "👁️ View Angles" },
