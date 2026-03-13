@@ -192,7 +192,7 @@ local cfg = {
     -- RGB
     rgb = { stroke = false, title = false, indicator = false, speed = 1, saturation = 1, brightness = 1 },
     gui = {
-panelW = 680, panelH = 540, sidebarW = 70, topbarH = 48,
+panelW = 680, panelH = 540, sidebarW = 65, topbarH = 48,
         fontSize = 12, titleSize = 18, cardSpacing = 10, cardPadding = 12,
         borderWidth = 1.5, cornerRadius = 14,
         toggleW = 40, toggleH = 20, sliderH = 10, btnH = 36,
@@ -1163,7 +1163,8 @@ sidebar.Size = UDim2.new(1, 0, 1, -cfg.gui.topbarH)
 sidebar.Position = UDim2.new(0, 0, 0, cfg.gui.topbarH)
 sidebar.BackgroundTransparency = 1; sidebar.BorderSizePixel = 0
 sidebar.ScrollBarThickness = 0; sidebar.ScrollingEnabled = true
-sidebar.CanvasSize = UDim2.new(0, 0, 0, 1200)
+sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
+sidebar.AutomaticCanvasSize = Enum.AutomaticSize.Y
 sidebar.ScrollingDirection = Enum.ScrollingDirection.Y
 sidebar.ZIndex = 3; sidebar.ClipsDescendants = false
 sidebar.Parent = sidebarOuter
@@ -1177,12 +1178,12 @@ sidebarLine.BorderSizePixel = 0; sidebarLine.ZIndex = 3; sidebarLine.Parent = si
 -- UIListLayout for tab buttons in sidebar (MANDATORY for non-overlapping)
 local sideLayout = Instance.new("UIListLayout", sidebar)
 sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
-sideLayout.Padding = UDim.new(0, 12)
+sideLayout.Padding = UDim.new(0, 4)
 sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 sideLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 local sidePad = Instance.new("UIPadding", sidebar)
-sidePad.PaddingTop = UDim.new(0, 8); sidePad.PaddingBottom = UDim.new(0, 8)
-sidePad.PaddingLeft = UDim.new(0, 4); sidePad.PaddingRight = UDim.new(0, 4)
+sidePad.PaddingTop = UDim.new(0, 4); sidePad.PaddingBottom = UDim.new(0, 4)
+sidePad.PaddingLeft = UDim.new(0, 2); sidePad.PaddingRight = UDim.new(0, 2)
 
 -- Tab indicator with glow (inside scrollable sidebar)
 local tabIndicator = Instance.new("Frame")
@@ -1267,11 +1268,11 @@ local TABS = {
 -- Create tab buttons and scroll frames
 for i, tab in ipairs(TABS) do
     local tbtn = Instance.new("TextButton")
-    tbtn.Size = UDim2.new(0, 50, 0, 50)
+    tbtn.Size = UDim2.new(0, 50, 0, 42)
     tbtn.LayoutOrder = i
     tbtn.BackgroundTransparency = 1; tbtn.BorderSizePixel = 0
     tbtn.Font = Enum.Font.Unknown
-    tbtn.TextSize = 22; tbtn.TextColor3 = C.textMuted; tbtn.Text = tab.icon
+    tbtn.TextSize = 20; tbtn.TextColor3 = C.textMuted; tbtn.Text = tab.icon
     tbtn.ZIndex = 5; tbtn.Parent = sidebar
     tbtn.AutoButtonColor = false
 
@@ -1302,10 +1303,12 @@ for i, tab in ipairs(TABS) do
     scroll.Visible = (i == 1); scroll.ZIndex = 2; scroll.Parent = panel
 
     local pad = Instance.new("UIPadding", scroll)
-    pad.PaddingLeft = UDim.new(0, 6); pad.PaddingRight = UDim.new(0, 6)
-    pad.PaddingTop = UDim.new(0, 6); pad.PaddingBottom = UDim.new(0, 10)
-    Instance.new("UIListLayout", scroll).Padding = UDim.new(0, cfg.gui.cardSpacing)
-    scroll:FindFirstChild("UIListLayout").SortOrder = Enum.SortOrder.LayoutOrder
+    pad.PaddingLeft = UDim.new(0, 8); pad.PaddingRight = UDim.new(0, 8)
+    pad.PaddingTop = UDim.new(0, 8); pad.PaddingBottom = UDim.new(0, 14)
+    local contentLayout = Instance.new("UIListLayout", scroll)
+    contentLayout.Padding = UDim.new(0, 8)
+    contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    contentLayout.FillDirection = Enum.FillDirection.Vertical
 
     obj.tabFrames[tab.id] = scroll
     tbtn.MouseButton1Click:Connect(function() if obj.switchTab then obj.switchTab(tab.id) end end)
@@ -1338,8 +1341,8 @@ local function switchTab(id)
     for i, tab in ipairs(TABS) do
         if tab.id == id then
             -- Position relative to sidebar scroll container
-            -- Each tab = 50px height + 12px padding + 8px top padding
-            local yPos = 8 + (i - 1) * (50 + 12) + 25 - 14
+            -- Each tab = 42px height + 4px padding + 4px top padding
+            local yPos = 4 + (i - 1) * (42 + 4) + 7
             TS:Create(tabIndicator, TweenInfo.new(0.25, Enum.EasingStyle.Back), {
                 Position = UDim2.new(0, 0, 0, yPos)
             }):Play()
@@ -1939,7 +1942,7 @@ do local tab = obj.tabFrames["gui"]; if tab then
     local ti = Instance.new("Frame"); ti.Size = UDim2.new(1, -18, 0, 35); ti.Position = UDim2.new(0, 9, 0, 28); ti.BackgroundTransparency = 1; ti.Parent = tc
     mkSlider(ti, "🔤 Corner Radius", cfg.gui.cornerRadius, 0, 24, 1, function(v) cfg.gui.cornerRadius = v end)
     mkBtn(tab, "🔄 Reset GUI", C.warning, 10, function()
-        cfg.gui = { panelW = 680, panelH = 540, sidebarW = 70, topbarH = 48, fontSize = 12, titleSize = 18, cardSpacing = 10, cardPadding = 12, borderWidth = 1.5, cornerRadius = 14, toggleW = 40, toggleH = 20, sliderH = 10, btnH = 36, panelOpacity = 0.12, accentR = 0, accentG = 220, accentB = 180, bgR = 12, bgG = 12, bgB = 18, sideR = 10, sideG = 10, sideB = 16 }
+        cfg.gui = { panelW = 680, panelH = 540, sidebarW = 65, topbarH = 48, fontSize = 12, titleSize = 18, cardSpacing = 10, cardPadding = 12, borderWidth = 1.5, cornerRadius = 14, toggleW = 40, toggleH = 20, sliderH = 10, btnH = 36, panelOpacity = 0.12, accentR = 0, accentG = 220, accentB = 180, bgR = 12, bgG = 12, bgB = 18, sideR = 10, sideG = 10, sideB = 16 }
         panel.Size = UDim2.new(0, 680, 0, 540); panel.BackgroundTransparency = 0.12; applyTheme(Color3.fromRGB(0, 220, 180)); notify("🔄 GUI Reset!", C.warning)
     end)
 end end
@@ -3067,7 +3070,7 @@ do
         { key = "speed",     name = "🏃 Speed" },
         { key = "infJump",   name = "🦘 Inf Jump" },
         { key = "hitbox",    name = "📦 Hitbox" },
-        { key = "spinBot",   name = "�� SpinBot" },
+        { key = "spinBot",   name = "🔄 SpinBot" },
         { key = "fullbright",name = "💡 Fullbright" },
         { key = "crosshair", name = "➕ Crosshair" },
         { key = "viewAngles",name = "👁️ View Angles" },
