@@ -1189,10 +1189,11 @@ sidePad.PaddingLeft = UDim.new(0, 4); sidePad.PaddingRight = UDim.new(0, 4)
 
 -- Tab indicator with glow (inside scrollable sidebar)
 local tabIndicator = Instance.new("Frame")
-tabIndicator.Size = UDim2.new(0, 3, 0, 28)
-tabIndicator.Position = UDim2.new(0, 0, 0, 10)
-tabIndicator.BackgroundColor3 = C.accent; tabIndicator.BorderSizePixel = 0; tabIndicator.ZIndex = 5; tabIndicator.Parent = sidebar
-mkCorner(tabIndicator, 2)
+tabIndicator.Size = UDim2.new(0, 4, 0, 32)
+tabIndicator.AnchorPoint = Vector2.new(0, 0.5)
+tabIndicator.Position = UDim2.new(0, sidebarW - 4, 0, 78)
+tabIndicator.BackgroundColor3 = C.accent; tabIndicator.BorderSizePixel = 0; tabIndicator.ZIndex = 1; tabIndicator.Parent = sidebarOuter
+mkCorner(tabIndicator, 10)
 local indGlow = Instance.new("UIStroke", tabIndicator); indGlow.Color = C.accent; indGlow.Thickness = 3; indGlow.Transparency = 0.5
 table.insert(obj.rgbElements, { obj = tabIndicator, prop = "BackgroundColor3", type = "indicator" })
 table.insert(obj.rgbElements, { obj = indGlow, prop = "Color", type = "indicator" })
@@ -1343,11 +1344,11 @@ local function switchTab(id)
     end
     for i, tab in ipairs(TABS) do
         if tab.id == id then
-            -- Position relative to sidebar scroll container
-            -- Each tab = 45px height + 10px padding + 8px top padding
-            local yPos = 8 + (i - 1) * (45 + 10) + 8
+            -- Position relative to sidebarOuter (includes topbar offset)
+            -- topbar=48, padding=8, button=45, gap=10, center=22
+            local yPos = 48 + 8 + (i - 1) * 55 + 22
             TS:Create(tabIndicator, TweenInfo.new(0.25, Enum.EasingStyle.Back), {
-                Position = UDim2.new(0, 0, 0, yPos)
+                Position = UDim2.new(0, sidebarW - 4, 0, yPos)
             }):Play()
             -- Auto-scroll sidebar to show the active tab
             pcall(function()
