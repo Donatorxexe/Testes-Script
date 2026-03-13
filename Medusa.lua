@@ -1,6 +1,6 @@
 --[[
     ╔══════════════════════════════════════════════════════════════╗
-    ║       🐍 MEDUSA v15.1 — CINEMATIC EDITION 🐍              ║
+     ║       🐍 MEDUSA v15.1.8 — CINEMATIC EDITION 🐍            ║
     ║                Made by .donatorexe.                         ║
     ║           Xeno Executor Optimized | .lua                    ║
     ╠══════════════════════════════════════════════════════════════╣
@@ -600,6 +600,7 @@ end
 local function mkCard(parent, height, order)
     local c = Instance.new("Frame")
     c.Size = UDim2.new(1, 0, 0, height)
+    c.AutomaticSize = Enum.AutomaticSize.Y -- auto-grow if content overflows
     c.BackgroundColor3 = C.glass; c.BackgroundTransparency = 0.35
     c.BorderSizePixel = 0; c.LayoutOrder = order or 0
     c.ClipsDescendants = false; c.Parent = parent
@@ -1161,6 +1162,7 @@ sideGrad.Rotation = 180
 local sidebar = Instance.new("ScrollingFrame")
 sidebar.Size = UDim2.new(1, 0, 1, -cfg.gui.topbarH)
 sidebar.Position = UDim2.new(0, 0, 0, cfg.gui.topbarH)
+sidebar.BackgroundColor3 = Color3.fromRGB(8, 8, 14) -- MUST SET or defaults to WHITE when animated
 sidebar.BackgroundTransparency = 1; sidebar.BorderSizePixel = 0
 sidebar.ScrollBarThickness = 0; sidebar.ScrollingEnabled = true
 sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -1303,12 +1305,13 @@ for i, tab in ipairs(TABS) do
     scroll.Visible = (i == 1); scroll.ZIndex = 2; scroll.Parent = panel
 
     local pad = Instance.new("UIPadding", scroll)
-    pad.PaddingLeft = UDim.new(0, 8); pad.PaddingRight = UDim.new(0, 8)
-    pad.PaddingTop = UDim.new(0, 8); pad.PaddingBottom = UDim.new(0, 14)
+    pad.PaddingLeft = UDim.new(0, 10); pad.PaddingRight = UDim.new(0, 10)
+    pad.PaddingTop = UDim.new(0, 10); pad.PaddingBottom = UDim.new(0, 16)
     local contentLayout = Instance.new("UIListLayout", scroll)
-    contentLayout.Padding = UDim.new(0, 8)
+    contentLayout.Padding = UDim.new(0, 10)
     contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
     contentLayout.FillDirection = Enum.FillDirection.Vertical
+    contentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
     obj.tabFrames[tab.id] = scroll
     tbtn.MouseButton1Click:Connect(function() if obj.switchTab then obj.switchTab(tab.id) end end)
@@ -1668,10 +1671,10 @@ do local tab = obj.tabFrames["misc"]; if tab then
         end
     end)
     mkSyncToggle(uci, "👻 Ghost Mode", "ghostMode", 5, function(on) 
-        if not on and panel then
+         if not on and panel then
             -- Restore normal transparency when turning off
             TS:Create(panel, TweenInfo.new(0.3), { BackgroundTransparency = cfg.gui.panelOpacity }):Play()
-            if sidebar then TS:Create(sidebar, TweenInfo.new(0.3), { BackgroundTransparency = 0.25 }):Play() end
+            if sidebarOuter then TS:Create(sidebarOuter, TweenInfo.new(0.3), { BackgroundTransparency = 0 }):Play() end
             if topbar then TS:Create(topbar, TweenInfo.new(0.3), { BackgroundTransparency = 0.15 }):Play() end
         end
         notify(on and "👻 Ghost Mode ON" or "❌ Ghost Mode OFF", on and C.accent or C.error)
@@ -1793,7 +1796,7 @@ do local tab = obj.tabFrames["style"]; if tab then
     mkSyncToggle(pi, "👻 Ghost Mode (Fade on idle)", "ghostMode", 2, function(on)
         if not on and panel then
             TS:Create(panel, TweenInfo.new(0.3), { BackgroundTransparency = cfg.gui.panelOpacity }):Play()
-            if sidebar then TS:Create(sidebar, TweenInfo.new(0.3), { BackgroundTransparency = 0.25 }):Play() end
+            if sidebarOuter then TS:Create(sidebarOuter, TweenInfo.new(0.3), { BackgroundTransparency = 0 }):Play() end
             if topbar then TS:Create(topbar, TweenInfo.new(0.3), { BackgroundTransparency = 0.15 }):Play() end
         end
         Notify("👻 Ghost Mode", on and "Panel will fade when mouse moves away" or "Panel visibility restored", 3)
@@ -1824,9 +1827,9 @@ do local tab = obj.tabFrames["style"]; if tab then
     local sideInner = Instance.new("Frame"); sideInner.Size = UDim2.new(1, -18, 0, 140); sideInner.Position = UDim2.new(0, 9, 0, 28)
     sideInner.BackgroundTransparency = 1; sideInner.Parent = sideCard
     local sideList = Instance.new("UIListLayout", sideInner); sideList.Padding = UDim.new(0, 3)
-    mkSlider(sideInner, "🔴 Side Red", cfg.gui.sideR, 0, 50, 1, function(v) cfg.gui.sideR = v; if sidebar then sidebar.BackgroundColor3 = Color3.fromRGB(v, cfg.gui.sideG, cfg.gui.sideB) end; autoSave() end)
-    mkSlider(sideInner, "🟢 Side Green", cfg.gui.sideG, 0, 50, 2, function(v) cfg.gui.sideG = v; if sidebar then sidebar.BackgroundColor3 = Color3.fromRGB(cfg.gui.sideR, v, cfg.gui.sideB) end; autoSave() end)
-    mkSlider(sideInner, "🔵 Side Blue", cfg.gui.sideB, 0, 50, 3, function(v) cfg.gui.sideB = v; if sidebar then sidebar.BackgroundColor3 = Color3.fromRGB(cfg.gui.sideR, cfg.gui.sideG, v) end; autoSave() end)
+    mkSlider(sideInner, "🔴 Side Red", cfg.gui.sideR, 0, 50, 1, function(v) cfg.gui.sideR = v; if sidebarOuter then sidebarOuter.BackgroundColor3 = Color3.fromRGB(v, cfg.gui.sideG, cfg.gui.sideB) end; autoSave() end)
+    mkSlider(sideInner, "🟢 Side Green", cfg.gui.sideG, 0, 50, 2, function(v) cfg.gui.sideG = v; if sidebarOuter then sidebarOuter.BackgroundColor3 = Color3.fromRGB(cfg.gui.sideR, v, cfg.gui.sideB) end; autoSave() end)
+    mkSlider(sideInner, "🔵 Side Blue", cfg.gui.sideB, 0, 50, 3, function(v) cfg.gui.sideB = v; if sidebarOuter then sidebarOuter.BackgroundColor3 = Color3.fromRGB(cfg.gui.sideR, cfg.gui.sideG, v) end; autoSave() end)
 
     -- Roundness & Transparency
     local rtCard = mkCard(tab, 120, 8); mkLabel(rtCard, "🔲 SHAPE & VISIBILITY", cfg.gui.fontSize, C.textMuted, 12, 6)
@@ -2966,9 +2969,9 @@ task.spawn(function()
                     BackgroundTransparency = targetTrans
                 }):Play()
                 -- Also fade sidebar and topbar
-                local sideTarget = isHovering and 0.25 or 0.88
+                local sideTarget = isHovering and 0 or 0.85
                 local topTarget = isHovering and 0.15 or 0.88
-                if sidebar then TS:Create(sidebar, TweenInfo.new(0.4), { BackgroundTransparency = sideTarget }):Play() end
+                if sidebarOuter then TS:Create(sidebarOuter, TweenInfo.new(0.4), { BackgroundTransparency = sideTarget }):Play() end
                 if topbar then TS:Create(topbar, TweenInfo.new(0.4), { BackgroundTransparency = topTarget }):Play() end
             end)
         end
@@ -3453,7 +3456,7 @@ pcall(function() introGui:Destroy() end)
 showBlur() -- Glassmorphism blur on startup
 panel.Visible = true
 panel.BackgroundTransparency = 1
-if sidebar then sidebar.BackgroundTransparency = 1 end
+if sidebarOuter then sidebarOuter.BackgroundTransparency = 1 end
 if topbar then topbar.BackgroundTransparency = 1 end
 if panelStroke then panelStroke.Transparency = 1 end
 
@@ -3470,7 +3473,7 @@ task.delay(0.3, function()
     if panelStroke then TS:Create(panelStroke, TweenInfo.new(0.5, Enum.EasingStyle.Quint), { Transparency = 0.15 }):Play() end
 end)
 task.delay(0.4, function()
-    if sidebar then TS:Create(sidebar, TweenInfo.new(0.5, Enum.EasingStyle.Quint), { BackgroundTransparency = 0.25 }):Play() end
+    if sidebarOuter then TS:Create(sidebarOuter, TweenInfo.new(0.5, Enum.EasingStyle.Quint), { BackgroundTransparency = 0 }):Play() end
 end)
 task.delay(0.5, function()
     if topbar then TS:Create(topbar, TweenInfo.new(0.5, Enum.EasingStyle.Quint), { BackgroundTransparency = 0.15 }):Play() end
