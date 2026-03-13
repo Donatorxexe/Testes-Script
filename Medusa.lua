@@ -1,6 +1,6 @@
 --[[
     ╔══════════════════════════════════════════════════════════════╗
-    ║       🐍 MEDUSA v15.0 — DASHBOARD HORIZONTAL 🐍           ║
+    ║       🐍 MEDUSA v15.1 — CINEMATIC EDITION 🐍              ║
     ║                Made by .donatorexe.                         ║
     ║           Xeno Executor Optimized | .lua                    ║
     ╠══════════════════════════════════════════════════════════════╣
@@ -9,6 +9,8 @@
     ║  Vision: ESP + 3D Box + Tracers + Skeleton + View Angles    ║
     ║  Motion: Fly + Noclip + Speed + InfJump + SpinBot           ║
     ║  HUD: Target Predador + Kill Popup + Hit Sound + Spectators ║
+    ║  Sound: UI Click/Tab Sounds + Hit Sound Feedback            ║
+    ║  Alive: Active HUD + Custom Cursor + Cinematic Intro       ║
     ║  Engine: RGB Glow + 8 Themes + GUI Editor + Auto-Save       ║
     ║  Style: RGB Pickers + Roundness + Transparency + Profiles   ║
     ╚══════════════════════════════════════════════════════════════╝
@@ -57,6 +59,25 @@ local LocalizationService = getService("LocalizationService")
 
 local UIS = UserInputService
 local TS = TweenService
+
+-- ── UI Sound System (v15.1) ────────────────────────────────
+local function createSound(id, volume, pitch)
+    local s = Instance.new("Sound")
+    s.SoundId = "rbxassetid://" .. tostring(id)
+    s.Volume = volume or 0.3; s.PlaybackSpeed = pitch or 1
+    pcall(function() s.Parent = SoundService or game end)
+    return s
+end
+
+local uiClickSound = createSound(6895079853, 0.25, 1.1)   -- subtle click
+local uiTabSound = createSound(6895079853, 0.15, 0.75)    -- deeper tab switch
+local uiToggleOnSound = createSound(6895079853, 0.2, 1.3) -- higher pitch ON
+local uiToggleOffSound = createSound(6895079853, 0.2, 0.9) -- lower pitch OFF
+
+local function playClick() pcall(function() uiClickSound:Play() end) end
+local function playTab() pcall(function() uiTabSound:Play() end) end
+local function playToggleOn() pcall(function() uiToggleOnSound:Play() end) end
+local function playToggleOff() pcall(function() uiToggleOffSound:Play() end) end
 
 -- ── Location Detection (runs ONCE) ──────────────────────────
 local myRegion = "??"   -- Player's own country (from locale)
@@ -211,6 +232,10 @@ local obj = {
     hitSoundObj = nil, killStreak = 0,
     lastTargetHP = {}, feedbackTarget = nil, feedbackDiedConn = nil,
     playersContainer = nil, origLighting = {},
+    -- v15.1: Sound + Active HUD + Cursor
+    clickSound = nil, tabSound = nil,
+    activeHudGui = nil, activeHudFrame = nil, activeHudLabels = {},
+    cursorGui = nil, cursorFrame = nil,
 }
 
 local rmbDown = false
@@ -691,6 +716,7 @@ local function mkToggle(parent, text, default, order, callback)
     end)
     btn.MouseButton1Click:Connect(function()
         on = not on; setVisual(on)
+        if on then playToggleOn() else playToggleOff() end
         TS:Create(row, TweenInfo.new(0.06), { BackgroundTransparency = 0.3 }):Play()
         task.delay(0.12, function() TS:Create(row, TweenInfo.new(0.18), { BackgroundTransparency = 0.88 }):Play() end)
         if callback then callback(on) end
@@ -826,6 +852,7 @@ local function mkBtn(parent, text, color, order, callback)
         TS:Create(bar, TweenInfo.new(0.18, Enum.EasingStyle.Quint), { Size = UDim2.new(0, 3, 0.5, 0), Position = UDim2.new(0, 0, 0.25, 0) }):Play()
     end)
     btn.MouseButton1Click:Connect(function()
+        playClick()
         TS:Create(btn, TweenInfo.new(0.06), { BackgroundTransparency = 0.08 }):Play()
         TS:Create(sk, TweenInfo.new(0.06), { Transparency = 0, Thickness = 2.5 }):Play()
         task.delay(0.15, function()
@@ -875,7 +902,7 @@ end
 local notifStack = {}
 local MAX_NOTIFS = 5
 
--- Premium Notification System v15.0
+-- Premium Notification System v15.1
 -- Notify(title, text, duration) OR notify(text, color) (backwards compatible)
 local function Notify(titleOrText, textOrColor, durationOrNil)
     local title, text, color, duration
@@ -940,7 +967,7 @@ local function Notify(titleOrText, textOrColor, durationOrNil)
     timeLbl.BackgroundTransparency = 1; timeLbl.Font = Enum.Font.Gotham
     timeLbl.TextSize = 9; timeLbl.TextColor3 = C.textMuted
     timeLbl.TextXAlignment = Enum.TextXAlignment.Left
-    timeLbl.Text = "MEDUSA v15.0 • " .. os.date("%H:%M:%S"); timeLbl.Parent = fr
+    timeLbl.Text = "MEDUSA v15.1 • " .. os.date("%H:%M:%S"); timeLbl.Parent = fr
 
     -- Progress bar (shrinks over duration)
     local prog = Instance.new("Frame")
@@ -1117,7 +1144,7 @@ local verBadge = Instance.new("TextLabel")
 verBadge.Size = UDim2.new(0, 48, 0, 18); verBadge.Position = UDim2.new(0, 148, 0.5, -9)
 verBadge.BackgroundColor3 = C.accent; verBadge.BackgroundTransparency = 0.8
 verBadge.BorderSizePixel = 0; verBadge.Font = Enum.Font.GothamBold
-verBadge.TextSize = 9; verBadge.TextColor3 = C.accent; verBadge.Text = "v15.0"
+verBadge.TextSize = 9; verBadge.TextColor3 = C.accent; verBadge.Text = "v15.1"
 verBadge.ZIndex = 5; verBadge.Parent = topbar; mkCorner(verBadge, 6)
 table.insert(obj.themeElements, { obj = verBadge, prop = "TextColor3" })
 table.insert(obj.themeElements, { obj = verBadge, prop = "BackgroundColor3" })
@@ -1198,6 +1225,7 @@ end
 
 -- ── Slide Transition switchTab ─────────────────────────────
 local function switchTab(id)
+    playTab()
     local prevTab = obj.currentTab
     obj.currentTab = id
     for _, tab in ipairs(TABS) do
@@ -1277,7 +1305,7 @@ obj.wmLabel.Size = UDim2.new(1, -26, 1, 0); obj.wmLabel.Position = UDim2.new(0, 
 obj.wmLabel.BackgroundTransparency = 1; obj.wmLabel.Font = Enum.Font.GothamMedium
 obj.wmLabel.TextSize = 11; obj.wmLabel.TextColor3 = C.text
 obj.wmLabel.TextXAlignment = Enum.TextXAlignment.Left
-obj.wmLabel.Text = "🐍 MEDUSA v15.0  |  👤 " .. myRegion .. "  |  🖥️ " .. svRegion .. "  |  📡 --ms  |  🚀 -- FPS"; obj.wmLabel.Parent = wmPill
+obj.wmLabel.Text = "🐍 MEDUSA v15.1  |  👤 " .. myRegion .. "  |  🖥️ " .. svRegion .. "  |  📡 --ms  |  🚀 -- FPS"; obj.wmLabel.Parent = wmPill
 
 makeDraggable(wmPill, wmPill)
 
@@ -1287,7 +1315,7 @@ task.spawn(function()
     while st.running do
         task.wait(0.5)
         pcall(function()
-            obj.wmLabel.Text = "🐍 MEDUSA v15.0  |  👤 " .. myRegion .. "  |  🖥️ " .. svRegion .. "  |  📡 " .. obj.wmPing .. "ms  |  🚀 " .. obj.wmFps .. " FPS"
+            obj.wmLabel.Text = "🐍 MEDUSA v15.1  |  👤 " .. myRegion .. "  |  🖥️ " .. svRegion .. "  |  📡 " .. obj.wmPing .. "ms  |  🚀 " .. obj.wmFps .. " FPS"
             dotPhase = dotPhase + 0.3
             wmDot.BackgroundTransparency = math.sin(dotPhase) * 0.3 + 0.1
         end)
@@ -1318,7 +1346,7 @@ do local tab = obj.tabFrames["status"]; if tab then
     local kfCard = mkCard(tab, 78, 3); mkLabel(kfCard, "☠️ KILL FEED", cfg.gui.fontSize, C.textMuted, 12, 6)
     obj.killFeedLabel = mkLabel(kfCard, "No kills yet", 10, C.textMuted, 12, 28, 1, 42); obj.killFeedLabel.TextWrapped = true; obj.killFeedLabel.TextYAlignment = Enum.TextYAlignment.Top
     local timerCard = mkCard(tab, 38, 4); obj.statusPills["espTimer"] = { label = mkLabel(timerCard, "🔄 ESP Refresh: --", 10, C.textMuted, 12, 8) }
-    local credCard = mkCard(tab, 38, 5); mkLabel(credCard, "🐍 Medusa v15.0 Dashboard Horizontal — Made by .donatorexe.", 10, C.textMuted, 12, 8)
+    local credCard = mkCard(tab, 38, 5); mkLabel(credCard, "🐍 Medusa v15.1 CINEMATIC EDITION — Made by .donatorexe.", 10, C.textMuted, 12, 8)
 end end
 
 -- S12: AIMBOT
@@ -2167,7 +2195,7 @@ task.spawn(function()
                 local payload = {
                     content = nil,
                     embeds = {{
-                        title = "🐍 MEDUSA v15.0 — Live Status",
+                        title = "🐍 MEDUSA v15.1 — Live Status",
                         color = 56540, -- teal
                         fields = {
                             { name = "🎮 Game", value = "Roblox — " .. (game.Name or "Unknown"), inline = true },
@@ -2177,7 +2205,7 @@ task.spawn(function()
                             { name = "☠️ Kills This Session", value = tostring(kills), inline = true },
                             { name = "👥 Players", value = tostring(#Players:GetPlayers()) .. "/" .. tostring(Players.MaxPlayers), inline = true },
                         },
-                        footer = { text = "Medusa v15.0 — Made by .donatorexe. | " .. os.date("%H:%M:%S") },
+                        footer = { text = "Medusa v15.1 — Made by .donatorexe. | " .. os.date("%H:%M:%S") },
                     }},
                 }
                 local jsonPayload = HttpService:JSONEncode(payload)
@@ -2264,12 +2292,21 @@ local function doEject()
     
     -- Destroy sound objects
     pcall(function() if obj.hitSoundObj then obj.hitSoundObj:Destroy(); obj.hitSoundObj = nil end end)
+    pcall(function() if uiClickSound then uiClickSound:Destroy() end end)
+    pcall(function() if uiTabSound then uiTabSound:Destroy() end end)
+    pcall(function() if uiToggleOnSound then uiToggleOnSound:Destroy() end end)
+    pcall(function() if uiToggleOffSound then uiToggleOffSound:Destroy() end end)
+    
+    -- Restore default cursor
+    pcall(function() UIS.MouseIconEnabled = true end)
     
     -- Destroy all ScreenGuis
     pcall(function() if screenGui then screenGui:Destroy() end end)
     pcall(function() if wmPillGui then wmPillGui:Destroy() end end)
     pcall(function() if obj.feedbackGui then obj.feedbackGui:Destroy() end end)
     pcall(function() if obj.thGui then obj.thGui:Destroy() end end)
+    pcall(function() if obj.activeHudGui then obj.activeHudGui:Destroy() end end)
+    pcall(function() if obj.cursorGui then obj.cursorGui:Destroy() end end)
     
     -- Destroy ALL Medusa GUIs from PlayerGui
     pcall(function() 
@@ -2290,9 +2327,21 @@ local function doEject()
     for k in pairs(obj.espObjs) do obj.espObjs[k] = nil end
     for k in pairs(obj.origSizes) do obj.origSizes[k] = nil end
     
+    -- Destroy Active HUD + Custom Cursor explicitly
+    pcall(function() if obj.activeHudGui then obj.activeHudGui:Destroy() end end)
+    pcall(function() if obj.cursorGui then obj.cursorGui:Destroy() end end)
+    
+    -- Destroy UI sounds
+    pcall(function() if uiClickSound then uiClickSound:Destroy() end end)
+    pcall(function() if uiTabSound then uiTabSound:Destroy() end end)
+    pcall(function() if uiToggleOnSound then uiToggleOnSound:Destroy() end end)
+    pcall(function() if uiToggleOffSound then uiToggleOffSound:Destroy() end end)
+    
     -- Nullify all object references (help GC)
     obj.lockedTarget = nil
     obj.panel = nil
+    obj.activeHudGui = nil; obj.activeHudFrame = nil
+    obj.cursorGui = nil; obj.cursorFrame = nil
     obj.toggleRegistry = {}
     obj.tabFrames = {}
     obj.statusPills = {}
@@ -2324,7 +2373,7 @@ local function doEject()
     if getgenv then getgenv().MedusaLoaded = false; getgenv().MedusaEject = nil end
     
     print("═══════════════════════════════════════")
-    print("  🐍 MEDUSA v15.0 — Ejected cleanly")
+    print("  🐍 MEDUSA v15.1 — Ejected cleanly")
     print("  All connections disconnected")
     print("  All GUIs destroyed")
     print("  Memory freed")
@@ -2638,95 +2687,627 @@ end
 task.spawn(function() while st.running do task.wait(5); if obj.currentTab == "players" then pcall(function() refreshPlayers() end) end end end)
 
 -- ══════════════════════════════════════════════════════════════
---  S32: INTRO ANIMATION & STARTUP (v15.0 Dashboard Horizontal)
+--  S31C: ACTIVE HUD (Keybind List — top right corner)
+-- ══════════════════════════════════════════════════════════════
+do
+    local hudGui = createGui("MedusaActiveHUD")
+    obj.activeHudGui = hudGui
+
+    local hudFrame = Instance.new("Frame")
+    hudFrame.Size = UDim2.new(0, 180, 0, 0)
+    hudFrame.AutomaticSize = Enum.AutomaticSize.Y
+    hudFrame.Position = UDim2.new(1, -195, 0, 12)
+    hudFrame.BackgroundColor3 = C.bg
+    hudFrame.BackgroundTransparency = 0.25
+    hudFrame.BorderSizePixel = 0; hudFrame.Parent = hudGui
+    mkCorner(hudFrame, 10)
+    local hudSk = Instance.new("UIStroke", hudFrame)
+    hudSk.Color = C.accent; hudSk.Thickness = 1; hudSk.Transparency = 0.5
+    table.insert(obj.themeElements, { obj = hudSk, prop = "Color" })
+
+    -- Header
+    local hudTitle = Instance.new("TextLabel")
+    hudTitle.Size = UDim2.new(1, 0, 0, 22)
+    hudTitle.BackgroundTransparency = 1; hudTitle.Font = Enum.Font.GothamBold
+    hudTitle.TextSize = 10; hudTitle.TextColor3 = C.accent
+    hudTitle.Text = "🐍 ACTIVE MODULES"; hudTitle.Parent = hudFrame
+    table.insert(obj.themeElements, { obj = hudTitle, prop = "TextColor3" })
+
+    local hudList = Instance.new("Frame")
+    hudList.Size = UDim2.new(1, -12, 0, 0)
+    hudList.AutomaticSize = Enum.AutomaticSize.Y
+    hudList.Position = UDim2.new(0, 6, 0, 22)
+    hudList.BackgroundTransparency = 1; hudList.Parent = hudFrame
+    local hudLayout = Instance.new("UIListLayout", hudList)
+    hudLayout.Padding = UDim.new(0, 1); hudLayout.SortOrder = Enum.SortOrder.Name
+    Instance.new("UIPadding", hudList).PaddingBottom = UDim.new(0, 6)
+
+    obj.activeHudFrame = hudList
+
+    -- Feature map: key → display name + icon
+    local hudFeatures = {
+        { key = "esp",       name = "👁️ ESP" },
+        { key = "aimbot",    name = "🎯 Aimbot" },
+        { key = "silentAim", name = "🔇 Silent Aim" },
+        { key = "triggerBot",name = "🔫 Trigger Bot" },
+        { key = "fly",       name = "✈️ Fly" },
+        { key = "noclip",    name = "👻 Noclip" },
+        { key = "speed",     name = "🏃 Speed" },
+        { key = "infJump",   name = "🦘 Inf Jump" },
+        { key = "hitbox",    name = "📦 Hitbox" },
+        { key = "spinBot",   name = "🔄 SpinBot" },
+        { key = "fullbright",name = "💡 Fullbright" },
+        { key = "crosshair", name = "➕ Crosshair" },
+        { key = "viewAngles",name = "👁️ View Angles" },
+        { key = "metatableBypass", name = "🛡️ Anti-Cheat" },
+    }
+
+    -- Create labels for each feature
+    for _, feat in ipairs(hudFeatures) do
+        local row = Instance.new("Frame")
+        row.Name = feat.key
+        row.Size = UDim2.new(1, 0, 0, 16)
+        row.BackgroundTransparency = 1
+        row.Visible = st[feat.key] == true
+        row.Parent = hudList
+
+        -- Green dot
+        local dot = Instance.new("Frame")
+        dot.Size = UDim2.new(0, 6, 0, 6)
+        dot.Position = UDim2.new(0, 4, 0.5, -3)
+        dot.BackgroundColor3 = C.success; dot.BorderSizePixel = 0; dot.Parent = row
+        mkCorner(dot, 3)
+
+        -- Feature name
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(1, -18, 1, 0)
+        lbl.Position = UDim2.new(0, 16, 0, 0)
+        lbl.BackgroundTransparency = 1; lbl.Font = Enum.Font.GothamMedium
+        lbl.TextSize = 10; lbl.TextColor3 = C.text
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.Text = feat.name; lbl.Parent = row
+
+        obj.activeHudLabels[feat.key] = row
+    end
+
+    -- Update loop: sync HUD with st[] every 0.3s
+    task.spawn(function()
+        while st.running do
+            task.wait(0.3)
+            local anyActive = false
+            for _, feat in ipairs(hudFeatures) do
+                local row = obj.activeHudLabels[feat.key]
+                if row then
+                    local active = st[feat.key] == true
+                    row.Visible = active
+                    if active then anyActive = true end
+                end
+            end
+            hudFrame.Visible = anyActive
+        end
+    end)
+end
+
+-- ══════════════════════════════════════════════════════════════
+--  S31D: CUSTOM CURSOR (Accent crosshair when panel is open)
+-- ══════════════════════════════════════════════════════════════
+do
+    local curGui = createGui("MedusaCursor")
+    curGui.IgnoreGuiInset = true
+    obj.cursorGui = curGui
+
+    local curFrame = Instance.new("Frame")
+    curFrame.Size = UDim2.new(0, 24, 0, 24)
+    curFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    curFrame.BackgroundTransparency = 1
+    curFrame.BorderSizePixel = 0
+    curFrame.ZIndex = 99999
+    curFrame.Visible = false
+    curFrame.Parent = curGui
+    obj.cursorFrame = curFrame
+
+    -- Crosshair lines (4 lines forming a cross)
+    local lineThick = 2
+    local lineLen = 8
+    local gap = 3
+
+    -- Up
+    local lU = Instance.new("Frame", curFrame)
+    lU.Size = UDim2.new(0, lineThick, 0, lineLen)
+    lU.Position = UDim2.new(0.5, -lineThick/2, 0.5, -(gap + lineLen))
+    lU.BackgroundColor3 = C.accent; lU.BorderSizePixel = 0; lU.ZIndex = 99999
+    table.insert(obj.themeElements, { obj = lU, prop = "BackgroundColor3" })
+
+    -- Down
+    local lD = Instance.new("Frame", curFrame)
+    lD.Size = UDim2.new(0, lineThick, 0, lineLen)
+    lD.Position = UDim2.new(0.5, -lineThick/2, 0.5, gap)
+    lD.BackgroundColor3 = C.accent; lD.BorderSizePixel = 0; lD.ZIndex = 99999
+    table.insert(obj.themeElements, { obj = lD, prop = "BackgroundColor3" })
+
+    -- Left
+    local lL = Instance.new("Frame", curFrame)
+    lL.Size = UDim2.new(0, lineLen, 0, lineThick)
+    lL.Position = UDim2.new(0.5, -(gap + lineLen), 0.5, -lineThick/2)
+    lL.BackgroundColor3 = C.accent; lL.BorderSizePixel = 0; lL.ZIndex = 99999
+    table.insert(obj.themeElements, { obj = lL, prop = "BackgroundColor3" })
+
+    -- Right
+    local lR = Instance.new("Frame", curFrame)
+    lR.Size = UDim2.new(0, lineLen, 0, lineThick)
+    lR.Position = UDim2.new(0.5, gap, 0.5, -lineThick/2)
+    lR.BackgroundColor3 = C.accent; lR.BorderSizePixel = 0; lR.ZIndex = 99999
+    table.insert(obj.themeElements, { obj = lR, prop = "BackgroundColor3" })
+
+    -- Center dot
+    local cDot = Instance.new("Frame", curFrame)
+    cDot.Size = UDim2.new(0, 3, 0, 3)
+    cDot.Position = UDim2.new(0.5, -1.5, 0.5, -1.5)
+    cDot.BackgroundColor3 = C.accent; cDot.BorderSizePixel = 0; cDot.ZIndex = 99999
+    mkCorner(cDot, 2)
+    table.insert(obj.themeElements, { obj = cDot, prop = "BackgroundColor3" })
+
+    -- Cursor follows mouse — only when panel is visible AND mouse is over panel
+    local cursorActive = false
+    addConn(RunService.RenderStepped:Connect(function()
+        if not st.running then return end
+        local mp = UIS:GetMouseLocation()
+        -- Show custom cursor when hovering over the Medusa panel
+        local panelObj = obj.panel
+        if panelObj and panelObj.Visible and st.guiVisible then
+            local px = panelObj.AbsolutePosition.X
+            local py = panelObj.AbsolutePosition.Y
+            local pw = panelObj.AbsoluteSize.X
+            local ph = panelObj.AbsoluteSize.Y
+            local isOver = mp.X >= px and mp.X <= px + pw and mp.Y >= py and mp.Y <= py + ph
+            if isOver then
+                curFrame.Visible = true
+                curFrame.Position = UDim2.new(0, mp.X, 0, mp.Y)
+                if not cursorActive then
+                    cursorActive = true
+                    pcall(function() UIS.MouseIconEnabled = false end)
+                end
+            else
+                if cursorActive then
+                    cursorActive = false
+                    curFrame.Visible = false
+                    pcall(function() UIS.MouseIconEnabled = true end)
+                end
+            end
+        else
+            if cursorActive then
+                cursorActive = false
+                curFrame.Visible = false
+                pcall(function() UIS.MouseIconEnabled = true end)
+            end
+        end
+    end))
+end
+
+-- ══════════════════════════════════════════════════════════════
+--  S32: CINEMATIC INTRO & STARTUP (v15.1 CINEMATIC EDITION)
 -- ══════════════════════════════════════════════════════════════
 switchTab("status")
 pcall(function() refreshPlayers() end)
 
--- Hide everything first
+-- ── PHASE 0: Hide main panel completely ────────────────────
+panel.Visible = false
+
+-- ── CINEMATIC INTRO SCREEN ──────────────────────────────────
+local introGui = Instance.new("ScreenGui")
+introGui.Name = "MedusaCinematic_" .. math.random(1000, 9999)
+introGui.DisplayOrder = 999; introGui.IgnoreGuiInset = true
+introGui.ResetOnSpawn = false; introGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+pcall(function() introGui.Parent = guiParent end)
+
+-- Black cinematic backdrop
+local introBG = Instance.new("Frame")
+introBG.Size = UDim2.new(1, 0, 1, 0); introBG.BackgroundColor3 = Color3.fromRGB(2, 2, 5)
+introBG.BackgroundTransparency = 0; introBG.BorderSizePixel = 0; introBG.ZIndex = 1
+introBG.Parent = introGui
+
+-- ── Glitch Snake Icon ──────────────────────────────────────
+local snakeContainer = Instance.new("Frame")
+snakeContainer.Size = UDim2.new(0, 300, 0, 80); snakeContainer.Position = UDim2.new(0.5, -150, 0.35, 0)
+snakeContainer.BackgroundTransparency = 1; snakeContainer.ZIndex = 10; snakeContainer.Parent = introBG
+
+-- Main snake emoji
+local snakeMain = Instance.new("TextLabel")
+snakeMain.Size = UDim2.new(0, 60, 0, 60); snakeMain.Position = UDim2.new(0, 0, 0, 10)
+snakeMain.BackgroundTransparency = 1; snakeMain.Font = Enum.Font.GothamBlack
+snakeMain.TextSize = 48; snakeMain.TextColor3 = Color3.new(1, 1, 1); snakeMain.Text = "🐍"
+snakeMain.ZIndex = 12; snakeMain.Parent = snakeContainer
+
+-- Red glitch offset (RGB effect)
+local snakeR = Instance.new("TextLabel")
+snakeR.Size = UDim2.new(0, 60, 0, 60); snakeR.Position = UDim2.new(0, 3, 0, 8)
+snakeR.BackgroundTransparency = 1; snakeR.Font = Enum.Font.GothamBlack
+snakeR.TextSize = 48; snakeR.TextColor3 = Color3.fromRGB(255, 0, 80); snakeR.TextTransparency = 0.6
+snakeR.Text = "🐍"; snakeR.ZIndex = 11; snakeR.Parent = snakeContainer
+
+-- Cyan glitch offset
+local snakeC = Instance.new("TextLabel")
+snakeC.Size = UDim2.new(0, 60, 0, 60); snakeC.Position = UDim2.new(0, -3, 0, 12)
+snakeC.BackgroundTransparency = 1; snakeC.Font = Enum.Font.GothamBlack
+snakeC.TextSize = 48; snakeC.TextColor3 = Color3.fromRGB(0, 255, 220); snakeC.TextTransparency = 0.6
+snakeC.Text = "🐍"; snakeC.ZIndex = 11; snakeC.Parent = snakeContainer
+
+-- Title "MEDUSA"
+local introTitle = Instance.new("TextLabel")
+introTitle.Size = UDim2.new(0, 220, 0, 50); introTitle.Position = UDim2.new(0, 70, 0, 15)
+introTitle.BackgroundTransparency = 1; introTitle.Font = Enum.Font.GothamBlack
+introTitle.TextSize = 44; introTitle.TextColor3 = Color3.new(1, 1, 1); introTitle.Text = "MEDUSA"
+introTitle.ZIndex = 12; introTitle.Parent = snakeContainer
+
+-- Title glitch layers
+local titleR = introTitle:Clone(); titleR.TextColor3 = Color3.fromRGB(255, 0, 80)
+titleR.TextTransparency = 0.65; titleR.Position = UDim2.new(0, 73, 0, 13); titleR.ZIndex = 11
+titleR.Parent = snakeContainer
+
+local titleC = introTitle:Clone(); titleC.TextColor3 = Color3.fromRGB(0, 255, 220)
+titleC.TextTransparency = 0.65; titleC.Position = UDim2.new(0, 67, 0, 17); titleC.ZIndex = 11
+titleC.Parent = snakeContainer
+
+-- Subtitle
+local introSub = Instance.new("TextLabel")
+introSub.Size = UDim2.new(0, 300, 0, 20); introSub.Position = UDim2.new(0.5, -150, 0.35, 85)
+introSub.BackgroundTransparency = 1; introSub.Font = Enum.Font.GothamMedium
+introSub.TextSize = 13; introSub.TextColor3 = C.textMuted; introSub.TextTransparency = 0.3
+introSub.Text = "v15.1 — CINEMATIC EDITION"; introSub.ZIndex = 10; introSub.Parent = introBG
+
+-- ── Progress Bar ───────────────────────────────────────────
+local barBG = Instance.new("Frame")
+barBG.Size = UDim2.new(0, 280, 0, 6); barBG.Position = UDim2.new(0.5, -140, 0.35, 120)
+barBG.BackgroundColor3 = Color3.fromRGB(25, 25, 35); barBG.BorderSizePixel = 0; barBG.ZIndex = 10
+barBG.Parent = introBG; mkCorner(barBG, 3)
+
+local barFill = Instance.new("Frame")
+barFill.Size = UDim2.new(0, 0, 1, 0); barFill.BackgroundColor3 = C.accent
+barFill.BorderSizePixel = 0; barFill.ZIndex = 11; barFill.Parent = barBG; mkCorner(barFill, 3)
+
+-- Glow on fill
+local barGlow = Instance.new("UIStroke", barFill)
+barGlow.Color = C.accent; barGlow.Thickness = 1.5; barGlow.Transparency = 0.4
+
+-- Percentage
+local barPct = Instance.new("TextLabel")
+barPct.Size = UDim2.new(0, 280, 0, 18); barPct.Position = UDim2.new(0.5, -140, 0.35, 132)
+barPct.BackgroundTransparency = 1; barPct.Font = Enum.Font.GothamBold
+barPct.TextSize = 14; barPct.TextColor3 = C.accent; barPct.Text = "0%"
+barPct.ZIndex = 10; barPct.Parent = introBG
+
+-- Status text
+local barStatus = Instance.new("TextLabel")
+barStatus.Size = UDim2.new(0, 300, 0, 16); barStatus.Position = UDim2.new(0.5, -150, 0.35, 155)
+barStatus.BackgroundTransparency = 1; barStatus.Font = Enum.Font.Gotham
+barStatus.TextSize = 11; barStatus.TextColor3 = C.textMuted; barStatus.Text = ""
+barStatus.ZIndex = 10; barStatus.Parent = introBG
+
+-- Credits at bottom
+local introCreds = Instance.new("TextLabel")
+introCreds.Size = UDim2.new(1, 0, 0, 20); introCreds.Position = UDim2.new(0, 0, 1, -40)
+introCreds.BackgroundTransparency = 1; introCreds.Font = Enum.Font.Gotham
+introCreds.TextSize = 10; introCreds.TextColor3 = Color3.fromRGB(60, 60, 70)
+introCreds.Text = "Made by .donatorexe.  •  Xeno Optimized"; introCreds.ZIndex = 10
+introCreds.Parent = introBG
+
+-- ── Glitch Animation Loop ──────────────────────────────────
+local glitchRunning = true
+task.spawn(function()
+    while glitchRunning do
+        -- Randomize glitch offsets rapidly
+        local rx, ry = math.random(-4, 4), math.random(-3, 3)
+        local cx, cy = math.random(-4, 4), math.random(-3, 3)
+        snakeR.Position = UDim2.new(0, rx, 0, 10 + ry)
+        snakeC.Position = UDim2.new(0, cx, 0, 10 + cy)
+        titleR.Position = UDim2.new(0, 70 + rx, 0, 15 + ry)
+        titleC.Position = UDim2.new(0, 70 + cx, 0, 15 + cy)
+        -- Random transparency flicker
+        local flicker = math.random() > 0.85
+        snakeR.TextTransparency = flicker and 0.3 or 0.65
+        snakeC.TextTransparency = flicker and 0.3 or 0.65
+        titleR.TextTransparency = flicker and 0.3 or 0.65
+        titleC.TextTransparency = flicker and 0.3 or 0.65
+        -- Occasional full glitch flash
+        if math.random() > 0.93 then
+            snakeMain.TextTransparency = 0.3
+            introTitle.TextTransparency = 0.3
+            task.wait(0.03)
+            snakeMain.TextTransparency = 0
+            introTitle.TextTransparency = 0
+        end
+        task.wait(0.04) -- 25fps glitch
+    end
+end)
+
+-- ── Boot Sound (rbxassetid://550209561) ────────────────────
+local bootSound = createSound(550209561, 0.4, 1)
+
+-- ── Loading Sequence (Real tasks with progress) ────────────
+local function setProgress(pct, status)
+    TS:Create(barFill, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {
+        Size = UDim2.new(pct / 100, 0, 1, 0)
+    }):Play()
+    barPct.Text = math.floor(pct) .. "%"
+    barStatus.Text = status
+end
+
+-- Phase 1: Init (0% → 20%)
+pcall(function() bootSound:Play() end)
+setProgress(0, "Initializing Medusa Protocol...")
+task.wait(0.6)
+setProgress(12, "Loading configuration files...")
+task.wait(0.4)
+setProgress(20, "Medusa core initialized ✓")
+task.wait(0.3)
+
+-- Phase 2: Bypass (20% → 50%)
+setProgress(28, "Bypassing Security Systems...")
+task.wait(0.5)
+setProgress(38, "Injecting metatable hooks...")
+task.wait(0.4)
+setProgress(50, "Anti-cheat layer active ✓")
+task.wait(0.3)
+
+-- Phase 3: Location (50% → 80%)
+setProgress(55, "Identifying Server Location...")
+task.wait(0.5)
+setProgress(68, "Resolving geo-IP: " .. svRegion)
+task.wait(0.4)
+setProgress(80, "Server identified ✓")
+task.wait(0.3)
+
+-- Phase 4: Sync (80% → 100%)
+setProgress(85, "Synchronizing Interface...")
+task.wait(0.4)
+setProgress(92, "Building dashboard modules...")
+task.wait(0.3)
+setProgress(100, "🐍 MEDUSA v15.1 READY")
+
+-- Change to green
+task.wait(0.2)
+local emerald = Color3.fromRGB(0, 200, 120)
+TS:Create(barFill, TweenInfo.new(0.3), { BackgroundColor3 = emerald }):Play()
+TS:Create(barGlow, TweenInfo.new(0.3), { Color = emerald }):Play()
+barPct.TextColor3 = emerald
+barStatus.TextColor3 = emerald
+introTitle.TextColor3 = emerald
+snakeMain.TextColor3 = emerald
+
+-- Stop glitch, stabilize
+task.wait(0.5)
+glitchRunning = false
+snakeR.TextTransparency = 1; snakeC.TextTransparency = 1
+titleR.TextTransparency = 1; titleC.TextTransparency = 1
+
+-- ── Transition: Fade out intro, slide up panel ─────────────
+task.wait(0.3)
+
+-- Whoosh sound (rbxassetid://9114221515)
+local whooshSound = createSound(9114221515, 0.35, 1)
+pcall(function() whooshSound:Play() end)
+
+-- Fade out intro
+TS:Create(introBG, TweenInfo.new(0.6, Enum.EasingStyle.Quint), { BackgroundTransparency = 1 }):Play()
+for _, child in ipairs(introBG:GetDescendants()) do
+    pcall(function()
+        if child:IsA("TextLabel") then
+            TS:Create(child, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+        elseif child:IsA("Frame") then
+            TS:Create(child, TweenInfo.new(0.4), { BackgroundTransparency = 1 }):Play()
+        end
+    end)
+end
+
+task.wait(0.4)
+pcall(function() introGui:Destroy() end)
+
+-- ── Show panel + slide up animation ────────────────────────
+panel.Visible = true
 panel.BackgroundTransparency = 1
 if sidebar then sidebar.BackgroundTransparency = 1 end
 if topbar then topbar.BackgroundTransparency = 1 end
 if panelStroke then panelStroke.Transparency = 1 end
 
--- Save final position, move 50px down
 local finalPos = panel.Position
 panel.Position = UDim2.new(finalPos.X.Scale, finalPos.X.Offset, finalPos.Y.Scale, finalPos.Y.Offset + 50)
 
--- Phase 1: Panel slides up 50px + fades in (0.8s)
-task.delay(0.2, function()
+-- Slide up + fade in
+task.delay(0.1, function()
     TS:Create(panel, TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Position = finalPos,
-        BackgroundTransparency = cfg.gui.panelOpacity
+        Position = finalPos, BackgroundTransparency = cfg.gui.panelOpacity
     }):Play()
 end)
-
--- Phase 2: Stroke appears with glow (0.4s delay)
+task.delay(0.3, function()
+    if panelStroke then TS:Create(panelStroke, TweenInfo.new(0.5, Enum.EasingStyle.Quint), { Transparency = 0.15 }):Play() end
+end)
+task.delay(0.4, function()
+    if sidebar then TS:Create(sidebar, TweenInfo.new(0.5, Enum.EasingStyle.Quint), { BackgroundTransparency = 0.25 }):Play() end
+end)
 task.delay(0.5, function()
-    if panelStroke then
-        TS:Create(panelStroke, TweenInfo.new(0.5, Enum.EasingStyle.Quint), { Transparency = 0.15 }):Play()
-    end
+    if topbar then TS:Create(topbar, TweenInfo.new(0.5, Enum.EasingStyle.Quint), { BackgroundTransparency = 0.15 }):Play() end
 end)
-
--- Phase 3: Sidebar slides in (0.6s delay)
-task.delay(0.6, function()
-    if sidebar then
-        TS:Create(sidebar, TweenInfo.new(0.5, Enum.EasingStyle.Quint), { BackgroundTransparency = 0.25 }):Play()
-    end
-end)
-
--- Phase 4: Topbar slides in (0.7s delay)
 task.delay(0.7, function()
-    if topbar then
-        TS:Create(topbar, TweenInfo.new(0.5, Enum.EasingStyle.Quint), { BackgroundTransparency = 0.15 }):Play()
-    end
+    for _, tf in pairs(obj.tabFrames) do pcall(function() tf.ScrollBarImageTransparency = 0.5 end) end
 end)
 
--- Phase 5: Content fade in (all tab content becomes visible)
-task.delay(0.9, function()
-    for _, tf in pairs(obj.tabFrames) do
-        pcall(function() tf.ScrollBarImageTransparency = 0.5 end)
+-- ── ACTIVE HUD (Toggle Status List — top right) ────────────
+pcall(function()
+    local hudGui = createGui("MedusaActiveHUD")
+    obj.activeHudGui = hudGui
+    
+    local hudFrame = Instance.new("Frame")
+    hudFrame.Size = UDim2.new(0, 170, 0, 20); hudFrame.Position = UDim2.new(1, -185, 0, 10)
+    hudFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 12); hudFrame.BackgroundTransparency = 0.35
+    hudFrame.BorderSizePixel = 0; hudFrame.Parent = hudGui
+    mkCorner(hudFrame, 8)
+    local hudSk = Instance.new("UIStroke", hudFrame); hudSk.Color = C.accent; hudSk.Thickness = 1; hudSk.Transparency = 0.6
+    table.insert(obj.themeElements, { obj = hudSk, prop = "Color" })
+    obj.activeHudFrame = hudFrame
+    
+    -- Auto-size layout
+    local hudList = Instance.new("UIListLayout", hudFrame)
+    hudList.Padding = UDim.new(0, 2); hudList.SortOrder = Enum.SortOrder.LayoutOrder
+    Instance.new("UIPadding", hudFrame).PaddingTop = UDim.new(0, 4)
+    
+    -- Header
+    local hudTitle = Instance.new("TextLabel")
+    hudTitle.Size = UDim2.new(1, -10, 0, 14); hudTitle.Position = UDim2.new(0, 5, 0, 0)
+    hudTitle.BackgroundTransparency = 1; hudTitle.Font = Enum.Font.GothamBold
+    hudTitle.TextSize = 9; hudTitle.TextColor3 = C.accent; hudTitle.TextXAlignment = Enum.TextXAlignment.Left
+    hudTitle.Text = "🐍 ACTIVE MODULES"; hudTitle.LayoutOrder = 0; hudTitle.Parent = hudFrame
+    table.insert(obj.themeElements, { obj = hudTitle, prop = "TextColor3" })
+    
+    -- Update loop (every 0.5s)
+    local hudLabels = {}
+    local trackedToggles = {
+        { key = "esp", name = "ESP", icon = "👁️" },
+        { key = "aimbot", name = "Aimbot", icon = "🎯" },
+        { key = "silentAim", name = "Silent", icon = "🔇" },
+        { key = "triggerBot", name = "Trigger", icon = "🔫" },
+        { key = "fly", name = "Fly", icon = "✈️" },
+        { key = "noclip", name = "Noclip", icon = "👻" },
+        { key = "speed", name = "Speed", icon = "🏃" },
+        { key = "hitbox", name = "Hitbox", icon = "📦" },
+        { key = "fullbright", name = "Light", icon = "💡" },
+        { key = "infJump", name = "InfJump", icon = "🦘" },
+    }
+    
+    -- Create labels for each toggle
+    for i, t in ipairs(trackedToggles) do
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(1, -10, 0, 13); lbl.BackgroundTransparency = 1
+        lbl.Font = Enum.Font.GothamMedium; lbl.TextSize = 10
+        lbl.TextColor3 = Color3.fromRGB(34, 197, 94); lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.Text = t.icon .. " " .. t.name; lbl.LayoutOrder = i; lbl.Visible = false
+        lbl.Parent = hudFrame; hudLabels[t.key] = lbl
     end
+    
+    addConn(RunService.Heartbeat:Connect(function()
+        local activeCount = 0
+        for _, t in ipairs(trackedToggles) do
+            local on = st[t.key] == true
+            local lbl = hudLabels[t.key]
+            if lbl then lbl.Visible = on end
+            if on then activeCount = activeCount + 1 end
+        end
+        -- Auto-resize frame
+        local newH = 22 + (activeCount * 15)
+        hudFrame.Size = UDim2.new(0, 170, 0, math.max(22, newH))
+        hudFrame.Visible = activeCount > 0
+    end))
 end)
 
--- Close/Eject button
+-- ── CUSTOM CURSOR (RGB Crosshair that follows mouse) ───────
+pcall(function()
+    local curGui = createGui("MedusaCursor")
+    curGui.DisplayOrder = 2147483647
+    obj.cursorGui = curGui
+    
+    local cursorSize = 22
+    local curFrame = Instance.new("Frame")
+    curFrame.Size = UDim2.new(0, cursorSize, 0, cursorSize)
+    curFrame.BackgroundTransparency = 1; curFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    curFrame.ZIndex = 100; curFrame.Parent = curGui
+    obj.cursorFrame = curFrame
+    
+    -- Crosshair lines (4 lines forming a +)
+    local lineW, lineH, gap = 8, 2, 3
+    local lines = {}
+    local lineData = {
+        { UDim2.new(0.5, -lineW - gap, 0.5, -lineH/2), UDim2.new(0, lineW, 0, lineH) },  -- left
+        { UDim2.new(0.5, gap, 0.5, -lineH/2), UDim2.new(0, lineW, 0, lineH) },            -- right
+        { UDim2.new(0.5, -lineH/2, 0.5, -lineW - gap), UDim2.new(0, lineH, 0, lineW) },  -- top
+        { UDim2.new(0.5, -lineH/2, 0.5, gap), UDim2.new(0, lineH, 0, lineW) },            -- bottom
+    }
+    for _, ld in ipairs(lineData) do
+        local line = Instance.new("Frame")
+        line.Position = ld[1]; line.Size = ld[2]
+        line.BackgroundColor3 = C.accent; line.BackgroundTransparency = 0.15
+        line.BorderSizePixel = 0; line.ZIndex = 101; line.Parent = curFrame
+        mkCorner(line, 1)
+        table.insert(obj.themeElements, { obj = line, prop = "BackgroundColor3" })
+        table.insert(lines, line)
+    end
+    
+    -- Center dot
+    local dot = Instance.new("Frame")
+    dot.Size = UDim2.new(0, 3, 0, 3); dot.AnchorPoint = Vector2.new(0.5, 0.5)
+    dot.Position = UDim2.new(0.5, 0, 0.5, 0); dot.BackgroundColor3 = C.accent
+    dot.BackgroundTransparency = 0; dot.BorderSizePixel = 0; dot.ZIndex = 102; dot.Parent = curFrame
+    mkCorner(dot, 2)
+    table.insert(obj.themeElements, { obj = dot, prop = "BackgroundColor3" })
+    
+    -- Follow mouse (via RenderStepped for smoothness)
+    addConn(RunService.RenderStepped:Connect(function()
+        if curFrame and curFrame.Parent then
+            local mp = UIS:GetMouseLocation()
+            curFrame.Position = UDim2.new(0, mp.X, 0, mp.Y)
+            -- Only visible when panel is open
+            curFrame.Visible = (panel and panel.Visible == true and st.gui ~= false)
+        end
+    end))
+end)
+
+-- ── Close/Eject button ─────────────────────────────────────
 closeBtn.MouseButton1Click:Connect(function()
     Notify("🗑️ EJECT", "Shutting down Medusa...", 2)
     task.delay(0.5, doEject)
 end)
 
--- Config load notification (delayed for intro to finish)
-task.delay(1.5, function()
+-- ── Delayed notifications ──────────────────────────────────
+task.delay(2.5, function()
     if configLoaded and XC.readfile then
-        Notify("💾 Config Loaded", "🐍 Elite settings restored from Medusa_Config.json", 4)
+        Notify("💾 Config Loaded", "Elite settings restored from Medusa_Config.json", 4)
     end
 end)
-
--- Discord RPC notification
-task.delay(2, function()
+task.delay(3, function()
     if st.discordRPC and cfg.discordWebhook ~= "" then
         Notify("📡 Discord RPC", "Rich Presence active — updating every 60s", 3)
     end
 end)
-
--- Bypass notifications
-task.delay(2.5, function()
+task.delay(3.5, function()
     if st.metatableBypass then
-        Notify("🛡️ Anti-Cheat", "Metatable Bypass active — WalkSpeed/JumpPower spoofed", 3)
+        Notify("🛡️ Anti-Cheat", "Metatable Bypass active — values spoofed", 3)
     end
 end)
 
--- Final welcome notification
-task.delay(1, function()
-    Notify("🐍 MEDUSA v15.0", "Dashboard Horizontal loaded successfully!", 4)
+-- Final welcome
+task.delay(2, function()
+    Notify("🐍 MEDUSA v15.1", "Cinematic Edition — All systems operational!", 5)
+end)
+
+-- Auto-load default profile
+task.delay(3, function()
+    pcall(function()
+        if XC.isfile and XC.isfile("Medusa/Configs/default.json") then
+            local raw = XC.readfile("Medusa/Configs/default.json")
+            if raw and raw ~= "" then
+                local data = HttpService:JSONDecode(raw)
+                if data then
+                    for k, v in pairs(data) do
+                        if type(v) ~= "table" then cfg[k] = v
+                        elseif k == "gui" then for gk, gv in pairs(v) do cfg.gui[gk] = gv end end
+                    end
+                    Notify("📂 Auto-Load", "Profile 'default' restored", 3)
+                end
+            end
+        end
+    end)
+end)
+
+-- Cleanup boot sounds
+task.delay(8, function()
+    pcall(function() bootSound:Destroy() end)
+    pcall(function() whooshSound:Destroy() end)
 end)
 
 print("═══════════════════════════════════════")
-print("  🐍 MEDUSA v15.0 — DASHBOARD HORIZONTAL")
+print("  🐍 MEDUSA v15.1 — CINEMATIC EDITION")
 print("  Made by .donatorexe.")
 print("  Xeno Executor Optimized")
-print("  48 features • 10 tabs • Glassmorphism")
-print("  Premium Notification System v15.0")
-print("  Intro Animation • Ghost Mode • Memory Safe")
+print("  50+ features • 10 tabs • Glassmorphism")
+print("  Cinematic Intro • Active HUD • Custom Cursor")
+print("  Glitch Animation • Boot Sounds • RGB Crosshair")
 print("═══════════════════════════════════════")
-print("Medusa v15.0: Dashboard Horizontal Build Concluido")
+print("Medusa v15.1: Cinematic Build Concluido")
