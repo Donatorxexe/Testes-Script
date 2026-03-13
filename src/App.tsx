@@ -761,7 +761,7 @@ export default function App() {
 
             <div style={{ marginBottom: '16px' }}>
               <p style={{ fontSize: '12px', color: '#a1a1aa', marginBottom: '12px' }}>
-                <strong>Passo 1:</strong> Faz upload do ficheiro <code className="code-font" style={{ background: '#1e1e30', padding: '2px 6px', borderRadius: '4px', color: '#00d4aa' }}>Medusa_v13.txt</code> para o teu GitHub
+                <strong>Passo 1:</strong> Faz upload do ficheiro <code className="code-font" style={{ background: '#1e1e30', padding: '2px 6px', borderRadius: '4px', color: '#00d4aa' }}>Medusa.lua</code> para o teu GitHub
               </p>
               <p style={{ fontSize: '12px', color: '#a1a1aa', marginBottom: '12px' }}>
                 <strong>Passo 2:</strong> Copia o URL Raw do ficheiro
