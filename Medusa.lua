@@ -1177,10 +1177,10 @@ sidebarLine.BorderSizePixel = 0; sidebarLine.ZIndex = 3; sidebarLine.Parent = si
 -- UIListLayout for tab buttons in sidebar (MANDATORY for non-overlapping)
 local sideLayout = Instance.new("UIListLayout", sidebar)
 sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
-sideLayout.Padding = UDim.new(0, 5)
+sideLayout.Padding = UDim.new(0, 6)
 sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 local sidePad = Instance.new("UIPadding", sidebar)
-sidePad.PaddingTop = UDim.new(0, 5); sidePad.PaddingBottom = UDim.new(0, 5)
+sidePad.PaddingTop = UDim.new(0, 6); sidePad.PaddingBottom = UDim.new(0, 6)
 sidePad.PaddingLeft = UDim.new(0, 2); sidePad.PaddingRight = UDim.new(0, 2)
 
 -- Tab indicator with glow (inside scrollable sidebar)
@@ -1549,7 +1549,20 @@ do local tab = obj.tabFrames["movement"]; if tab then
     local mi = Instance.new("Frame"); mi.Size = UDim2.new(1, -18, 0, 280); mi.Position = UDim2.new(0, 9, 0, 28); mi.BackgroundTransparency = 1; mi.Parent = mc
     local mil = Instance.new("UIListLayout", mi); mil.Padding = UDim.new(0, 4)
     mkSyncToggle(mi, "✈️ Fly", "fly", 1, function(on) if on then pcall(function() enableFly() end) else pcall(function() disableFly() end) end; notify(on and "✈️ Fly ON" or "❌ OFF", on and C.blue or C.error) end)
-    mkSyncToggle(mi, "👻 Noclip", "noclip", 2, function(on) if not on then pcall(function() local c = player.Character; if c then for _, p in ipairs(c:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = true end end end end) end; notify(on and "👻 Noclip ON" or "❌ OFF", on and C.success or C.error) end)
+    mkSyncToggle(mi, "👻 Noclip", "noclip", 2, function(on) 
+        if not on then 
+            pcall(function() 
+                local c = player.Character
+                if c then 
+                    for _, p in ipairs(c:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = true end end
+                    local h = c:FindFirstChildOfClass("Humanoid"); if h then h:ChangeState(Enum.HumanoidStateType.GettingUp) end
+                    local hrp = c:FindFirstChild("HumanoidRootPart"); if hrp then hrp.CanCollide = true; hrp.Velocity = Vector3.zero end
+                end
+                if getgenv then getgenv().Noclip = false end
+            end)
+        end
+        notify(on and "👻 Noclip ON" or "❌ OFF", on and C.success or C.error) 
+    end)
     mkSyncToggle(mi, "🏃 Speed Hack", "speed", 3, function(on) if not on then pcall(function() local h = player.Character and player.Character:FindFirstChildOfClass("Humanoid"); if h then h.WalkSpeed = 16 end end) end; notify(on and "🏃 Speed ON" or "❌ OFF", on and C.accent or C.error) end)
     mkSyncToggle(mi, "🦘 Infinite Jump", "infJump", 4, function(on) notify(on and "🦘 InfJump ON" or "❌ OFF", on and C.accent or C.error) end)
     mkSyncToggle(mi, "🪂 No Fall Damage", "noFallDmg", 5, function(on) notify(on and "🪂 ON" or "❌ OFF", on and C.accent or C.error) end)
@@ -1688,27 +1701,59 @@ end end
 
 -- S18: BINDS
 do local tab = obj.tabFrames["binds"]; if tab then
+    -- Title card
     mkCard(tab, 38, 1); mkLabel(tab:FindFirstChild("Frame") or tab, "🎮 KEYBINDS", cfg.gui.fontSize, C.textMuted, 12, 8)
+    
+    -- Keybind display names (clean labels)
+    local bindNames = {
+        esp = "👁️ ESP", aimbot = "🎯 Aimbot", silentAim = "🔇 Silent Aim", triggerBot = "🔫 Trigger Bot",
+        fly = "✈️ Fly", noclip = "👻 Noclip", hitbox = "📦 Hitbox", speed = "🏃 Speed",
+        infJump = "🦘 Inf. Jump", fullbright = "💡 Fullbright", crosshair = "➕ Crosshair",
+        clickTP = "🖱️ Click TP", noFallDmg = "🪂 No Fall Dmg", spinBot = "🌀 Spin Bot",
+        toggleGui = "👁️ Toggle GUI", eject = "🗑️ Eject", panic = "🚨 Panic"
+    }
     local bo = { "esp", "aimbot", "silentAim", "triggerBot", "fly", "noclip", "hitbox", "speed", "infJump", "fullbright", "crosshair", "clickTP", "noFallDmg", "spinBot", "toggleGui", "eject", "panic" }
     for i, key in ipairs(bo) do
-        local r = Instance.new("Frame"); r.Size = UDim2.new(1, 0, 0, 32); r.BackgroundTransparency = 1; r.LayoutOrder = i + 1; r.Parent = tab
-        local l = Instance.new("TextLabel"); l.Size = UDim2.new(0.6, 0, 1, 0); l.Position = UDim2.new(0, 12, 0, 0)
-        l.BackgroundTransparency = 1; l.Font = Enum.Font.GothamMedium; l.TextSize = cfg.gui.fontSize; l.TextColor3 = C.text
-        l.TextXAlignment = Enum.TextXAlignment.Left; l.Text = key; l.Parent = r
-        local b = Instance.new("TextButton"); b.Size = UDim2.new(0, 80, 0, 26); b.Position = UDim2.new(1, -92, 0.5, -13)
-        b.BackgroundColor3 = C.glass; b.BackgroundTransparency = 0.4; b.BorderSizePixel = 0; b.AutoButtonColor = false
-        b.Font = Enum.Font.GothamBold; b.TextSize = 11; b.TextColor3 = C.accent
-        b.Text = keybinds[key] and keybinds[key].Name or "?"; b.Parent = r; mkCorner(b, 6)
+        local r = Instance.new("Frame"); r.Size = UDim2.new(1, 0, 0, 30); r.BackgroundColor3 = C.glass
+        r.BackgroundTransparency = 0.6; r.BorderSizePixel = 0; r.LayoutOrder = i + 1; r.Parent = tab; mkCorner(r, 6)
+        
+        -- Label à esquerda com nome limpo
+        local l = Instance.new("TextLabel"); l.Size = UDim2.new(1, -70, 1, 0); l.Position = UDim2.new(0, 10, 0, 0)
+        l.BackgroundTransparency = 1; l.Font = Enum.Font.GothamMedium; l.TextSize = 11; l.TextColor3 = C.text
+        l.TextXAlignment = Enum.TextXAlignment.Left; l.Text = bindNames[key] or key; l.Parent = r
+        
+        -- Botão pequeno quadrado à direita com a tecla [G]
+        local b = Instance.new("TextButton"); b.Size = UDim2.new(0, 52, 0, 22); b.Position = UDim2.new(1, -58, 0.5, -11)
+        b.BackgroundColor3 = C.bgDark; b.BackgroundTransparency = 0.3; b.BorderSizePixel = 0; b.AutoButtonColor = false
+        b.Font = Enum.Font.GothamBold; b.TextSize = 10; b.TextColor3 = C.accent
+        b.Text = "[" .. (keybinds[key] and keybinds[key].Name or "?") .. "]"; b.Parent = r; mkCorner(b, 5)
         local bsk = Instance.new("UIStroke", b); bsk.Color = C.border; bsk.Thickness = 1
+        
+        -- Hover effect on row
+        r.MouseEnter:Connect(function() TS:Create(r, TweenInfo.new(0.12), { BackgroundTransparency = 0.35 }):Play() end)
+        r.MouseLeave:Connect(function() TS:Create(r, TweenInfo.new(0.12), { BackgroundTransparency = 0.6 }):Play() end)
+        
+        -- Click → listen for new key
         local listening = false
         b.MouseButton1Click:Connect(function()
-            if listening then return end; listening = true; b.Text = "..."; b.TextColor3 = C.warning
+            if listening then return end; listening = true
+            b.Text = "[...]"; b.TextColor3 = C.warning; bsk.Color = C.warning
+            TS:Create(b, TweenInfo.new(0.15), { BackgroundTransparency = 0.1 }):Play()
             local conn; conn = UIS.InputBegan:Connect(function(inp, gp) if gp then return end
-                if inp.KeyCode ~= Enum.KeyCode.Unknown then keybinds[key] = inp.KeyCode; b.Text = inp.KeyCode.Name; b.TextColor3 = C.accent; listening = false; conn:Disconnect(); autoSave() end
+                if inp.KeyCode ~= Enum.KeyCode.Unknown then 
+                    keybinds[key] = inp.KeyCode
+                    b.Text = "[" .. inp.KeyCode.Name .. "]"
+                    b.TextColor3 = C.accent; bsk.Color = C.border
+                    TS:Create(b, TweenInfo.new(0.15), { BackgroundTransparency = 0.3 }):Play()
+                    listening = false; conn:Disconnect(); autoSave()
+                end
             end)
         end)
     end
-    mkBtn(tab, "🔄 Reset All Binds", C.warning, 100, function() for k, v in pairs(defaultBinds) do keybinds[k] = v end; notify("🔄 Binds reset!", C.warning) end)
+    mkBtn(tab, "🔄 Reset All Binds", C.warning, 100, function() 
+        for k, v in pairs(defaultBinds) do keybinds[k] = v end
+        Notify("🔄 Binds Reset", "All keybinds restored to defaults", 3)
+    end)
 end end
 
 -- S19: STYLE
@@ -2409,7 +2454,21 @@ local function toggleFeature(key)
     if key == "esp" then if not on then clearESP() else lastESPRefresh = os.time() end; notify(on and "👁️ ESP ON" or "❌ ESP OFF", on and C.success or C.error)
     elseif key == "aimbot" then if not on then obj.lockedTarget = nil; rmbDown = false end; notify(on and "🎯 Aimbot ON" or "❌ OFF", on and C.purple or C.error)
     elseif key == "fly" then if on then enableFly() else disableFly() end; notify(on and "✈️ Fly ON" or "❌ OFF", on and C.blue or C.error)
-    elseif key == "noclip" then if not on then pcall(function() local c = player.Character; if c then for _, p in ipairs(c:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = true end end end end) end; notify(on and "👻 Noclip ON" or "❌ OFF", on and C.success or C.error)
+    elseif key == "noclip" then 
+        if not on then 
+            pcall(function() 
+                local c = player.Character
+                if c then 
+                    for _, p in ipairs(c:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = true end end
+                    local h = c:FindFirstChildOfClass("Humanoid")
+                    if h then h:ChangeState(Enum.HumanoidStateType.GettingUp) end
+                    local hrp = c:FindFirstChild("HumanoidRootPart")
+                    if hrp then hrp.CanCollide = true; hrp.Velocity = Vector3.zero end
+                end
+                if getgenv then getgenv().Noclip = false end
+            end)
+        end
+        notify(on and "👻 Noclip ON" or "❌ OFF", on and C.success or C.error)
     elseif key == "hitbox" then if not on then resetAllHitboxes() end; notify(on and "📦 Hitbox ON" or "❌ OFF", on and C.warning or C.error)
     elseif key == "speed" then if not on then pcall(function() local h = player.Character and player.Character:FindFirstChildOfClass("Humanoid"); if h then h.WalkSpeed = 16 end end) end; notify(on and "🏃 Speed ON" or "❌ OFF", on and C.accent or C.error)
     elseif key == "fullbright" then setFullbright(on); notify(on and "💡 Fullbright ON" or "❌ OFF", on and C.warning or C.error)
@@ -2419,10 +2478,29 @@ end
 local function doPanic()
     for k in pairs(st) do if k ~= "running" and k ~= "guiVisible" and k ~= "antiAfk" then st[k] = false; syncToggleVisual(k, false) end end
     clearESP(); resetAllHitboxes(); disableFly(); setFullbright(false)
-    pcall(function() local c = player.Character; if c then for _, p in ipairs(c:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = true end end; local h = c:FindFirstChildOfClass("Humanoid"); if h then h.WalkSpeed = 16 end end end)
+    pcall(function() 
+        local c = player.Character
+        if c then 
+            -- Restore collision on ALL parts
+            for _, p in ipairs(c:GetDescendants()) do 
+                if p:IsA("BasePart") then p.CanCollide = true end
+                if p:IsA("BodyVelocity") or p:IsA("BodyGyro") then p:Destroy() end
+            end
+            local h = c:FindFirstChildOfClass("Humanoid")
+            if h then 
+                h.WalkSpeed = 16; h.JumpPower = 50
+                -- CRITICAL: Force physics recalculation
+                h:ChangeState(Enum.HumanoidStateType.GettingUp)
+            end
+            local hrp = c:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.CanCollide = true; hrp.Velocity = Vector3.zero end
+        end
+    end)
+    -- Force noclip OFF globally
+    pcall(function() if getgenv then getgenv().Noclip = false; getgenv().MedusaNoclip = false end end)
     -- Remove blur on panic
     pcall(function() hideBlur() end)
-    obj.lockedTarget = nil; rmbDown = false; notify("🚨 All features disabled!", C.error)
+    obj.lockedTarget = nil; rmbDown = false; Notify("🚨 Panic", "All features disabled!", 3)
 end
 
 local function doEject()
@@ -2503,23 +2581,70 @@ local function doEject()
     obj.killFeed = {}
     notifStack = {}
     
-    -- Restore character state (FULL COLLISION RESTORE)
-    st.noclip = false -- kill noclip loop
+    -- FULL PHYSICS RESTORE (Fix: noclip collision persists after eject)
+    -- Step 1: Kill noclip IMMEDIATELY — stop the Stepped loop
+    st.noclip = false
+    st.fly = false
+    st.speed = false
+    st.infJump = false
+    st.spinBot = false
+    
+    -- Step 2: Wait 1 frame so the Stepped loop can check st.noclip=false and stop
+    pcall(function() RunService.Stepped:Wait() end)
+    
+    -- Step 3: Force restore ALL collision on ALL character parts
     pcall(function()
         local char = player.Character
         if char then
+            -- Restore Humanoid properties
             local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then hum.WalkSpeed = 16; hum.JumpPower = 50; hum.CameraOffset = Vector3.new(0,0,0) end
+            if hum then 
+                hum.WalkSpeed = 16
+                hum.JumpPower = 50
+                hum.CameraOffset = Vector3.new(0, 0, 0)
+                -- CRITICAL: Force physics engine to recalculate collision
+                hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+            end
+            
+            -- Force HRP collision ON + zero velocity
             local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp then hrp.CanCollide = true; hrp.Velocity = Vector3.new(0,0,0) end
+            if hrp then 
+                hrp.CanCollide = true
+                hrp.Velocity = Vector3.new(0, 0, 0)
+                -- Also reset RotVelocity (prevents spinning after fling)
+                hrp.RotVelocity = Vector3.new(0, 0, 0)
+            end
+            
+            -- Iterate ALL descendants — restore CanCollide and destroy fly objects
             for _, p in ipairs(char:GetDescendants()) do
-                if p:IsA("BasePart") then p.CanCollide = true end
-                if p:IsA("BodyVelocity") or p:IsA("BodyGyro") then p:Destroy() end
+                if p:IsA("BasePart") then 
+                    p.CanCollide = true 
+                end
+                if p:IsA("BodyVelocity") or p:IsA("BodyGyro") or p:IsA("BodyPosition") or p:IsA("BodyAngularVelocity") then 
+                    p:Destroy() 
+                end
+            end
+            
+            -- Force another state change to ensure collision sticks
+            if hum then
+                task.delay(0.1, function()
+                    pcall(function()
+                        hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+                        -- Final CanCollide enforcement
+                        if hrp then hrp.CanCollide = true end
+                    end)
+                end)
             end
         end
     end)
-    -- Force noclip OFF globally
-    pcall(function() if getgenv then getgenv().Noclip = false end end)
+    
+    -- Step 4: Force noclip OFF globally (other scripts may check this)
+    pcall(function() 
+        if getgenv then 
+            getgenv().Noclip = false 
+            getgenv().MedusaNoclip = false
+        end 
+    end)
     
     -- Restore camera FULLY (Fix: camera stuck after eject)
     pcall(function() 
