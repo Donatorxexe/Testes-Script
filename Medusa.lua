@@ -1126,7 +1126,7 @@ panel.Size = UDim2.new(0, cfg.gui.panelW, 0, cfg.gui.panelH)
 panel.Position = UDim2.new(1, -(cfg.gui.panelW + 24), 0.5, -cfg.gui.panelH / 2)
 panel.BackgroundColor3 = C.bg; panel.BackgroundTransparency = cfg.gui.panelOpacity
 panel.BorderSizePixel = 0; panel.ClipsDescendants = true; panel.ZIndex = 1; panel.Parent = screenGui
-mkCorner(panel, CR)
+-- UICorner removido (Square Edition v15.3.0)
 obj.panel = panel
 
 -- Neon border glow
@@ -1193,7 +1193,7 @@ tabIndicator.Size = UDim2.new(0, 4, 0, 32)
 tabIndicator.AnchorPoint = Vector2.new(0, 0.5)
 tabIndicator.Position = UDim2.new(0, sidebarW - 4, 0, 78)
 tabIndicator.BackgroundColor3 = C.accent; tabIndicator.BorderSizePixel = 0; tabIndicator.ZIndex = 1; tabIndicator.Parent = sidebarOuter
-mkCorner(tabIndicator, 10)
+-- UICorner removido (Square Edition v15.3.0)
 local indGlow = Instance.new("UIStroke", tabIndicator); indGlow.Color = C.accent; indGlow.Thickness = 3; indGlow.Transparency = 0.5
 table.insert(obj.rgbElements, { obj = tabIndicator, prop = "BackgroundColor3", type = "indicator" })
 table.insert(obj.rgbElements, { obj = indGlow, prop = "Color", type = "indicator" })
