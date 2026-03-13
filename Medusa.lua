@@ -1113,7 +1113,9 @@ sidebarLine.BorderSizePixel = 0; sidebarLine.ZIndex = 3; sidebarLine.Parent = si
 -- UIListLayout for tab buttons in sidebar
 local sideLayout = Instance.new("UIListLayout", sidebar)
 sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
-sideLayout.Padding = UDim.new(0, 0)
+sideLayout.Padding = UDim.new(0, 3)
+local sidePad = Instance.new("UIPadding", sidebar)
+sidePad.PaddingTop = UDim.new(0, 3); sidePad.PaddingBottom = UDim.new(0, 3)
 
 -- Tab indicator with glow (inside scrollable sidebar)
 local tabIndicator = Instance.new("Frame")
@@ -2180,8 +2182,8 @@ addConn(RS.RenderStepped:Connect(function() if not st.running then return end
         obj.bv.Velocity = mv.Magnitude > 0 and mv.Unit * cfg.flySpeed or Vector3.zero; obj.bg.CFrame = cam
     end
 end))
-addConn(RS.Stepped:Connect(function() if st.running and st.noclip and player.Character then for _, p in ipairs(player.Character:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = false end end end end))
-addConn(RS.RenderStepped:Connect(function() if st.running and st.speed and player.Character then local h = player.Character:FindFirstChildOfClass("Humanoid"); if h then h.WalkSpeed = cfg.walkSpeed end end end))
+addConn(RS.Stepped:Connect(function() if not st.running then return end; if not (getgenv and getgenv().MedusaLoaded) then return end; if st.noclip and player.Character then for _, p in ipairs(player.Character:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = false end end end end))
+addConn(RS.RenderStepped:Connect(function() if not st.running then return end; if not (getgenv and getgenv().MedusaLoaded) then return end; if st.speed and player.Character then local h = player.Character:FindFirstChildOfClass("Humanoid"); if h then h.WalkSpeed = cfg.walkSpeed end end end))
 addConn(UIS.JumpRequest:Connect(function() if st.infJump and player.Character then local h = player.Character:FindFirstChildOfClass("Humanoid"); if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end end end))
 addConn(RS.RenderStepped:Connect(function() if st.noFallDmg and player.Character then local h = player.Character:FindFirstChildOfClass("Humanoid"); if h then h:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false); h:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false) end end end))
 task.spawn(function() while st.running do task.wait(1/30); if st.spinBot and player.Character then local hrp = player.Character:FindFirstChild("HumanoidRootPart"); if hrp then hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(cfg.spinSpeed), 0) end end end end)
@@ -2273,20 +2275,39 @@ end)
 task.spawn(function()
     local hue, pulsePhase = 0, 0
     while st.running do
-        task.wait(1 / 30); hue = (hue + cfg.rgb.speed / 300) % 1; pulsePhase = pulsePhase + 0.06
+        task.wait(1 / 30)
+        if not st.running then break end
+        hue = (hue + cfg.rgb.speed / 300) % 1; pulsePhase = pulsePhase + 0.04
         local rgbColor = Color3.fromHSV(hue, cfg.rgb.saturation, cfg.rgb.brightness)
+        -- Apply RGB only to registered elements (stroke, title, indicator)
         for _, el in ipairs(obj.rgbElements) do pcall(function()
+            if not el.obj or not el.obj.Parent then return end
             if el.type == "stroke" and cfg.rgb.stroke then el.obj[el.prop] = rgbColor
             elseif el.type == "title" and cfg.rgb.title then el.obj[el.prop] = rgbColor
             elseif el.type == "indicator" and cfg.rgb.indicator then el.obj[el.prop] = rgbColor end
         end) end
-        -- Neon glow pulse
+        -- Subtle glow pulse (NOT the massive thickness change)
         if cfg.rgb.stroke or cfg.rgb.title then pcall(function()
+            if not panelStroke or not panelStroke.Parent then return end
             local pulse = math.sin(pulsePhase) * 0.5 + 0.5
-            panelStroke.Thickness = 1.5 + pulse * 2.5; panelStroke.Transparency = 0.05 + (1 - pulse) * 0.35
-            shadow.ImageColor3 = cfg.rgb.stroke and rgbColor or C.accent; shadow.ImageTransparency = 0.35 + (1 - pulse) * 0.25
-        end) else pcall(function() panelStroke.Thickness = 2; panelStroke.Transparency = 0.2; shadow.ImageColor3 = C.accent; shadow.ImageTransparency = 0.45 end) end
+            -- SUBTLE: only oscillate thickness 1.5 to 2.5 (not 4!)
+            panelStroke.Thickness = 1.5 + pulse * 1.0
+            panelStroke.Transparency = 0.1 + (1 - pulse) * 0.2
+            -- Shadow: subtle color shift only
+            if shadow and shadow.Parent then
+                shadow.ImageColor3 = cfg.rgb.stroke and rgbColor or C.accent
+                shadow.ImageTransparency = 0.4 + (1 - pulse) * 0.15
+            end
+        end) else pcall(function()
+            if panelStroke and panelStroke.Parent then panelStroke.Thickness = 1.5; panelStroke.Transparency = 0.2 end
+            if shadow and shadow.Parent then shadow.ImageColor3 = C.accent; shadow.ImageTransparency = 0.45 end
+        end) end
     end
+    -- CLEANUP: Reset to defaults when loop dies
+    pcall(function()
+        if panelStroke and panelStroke.Parent then panelStroke.Thickness = 1.5; panelStroke.Transparency = 0.2; panelStroke.Color = C.accent end
+        if shadow and shadow.Parent then shadow.ImageColor3 = C.accent; shadow.ImageTransparency = 0.45 end
+    end)
 end)
 
 -- ══════════════════════════════════════════════════════════════
@@ -2328,6 +2349,9 @@ local function doEject()
     -- Restore default cursor
     pcall(function() UIS.MouseIconEnabled = true end)
     
+    -- Reset panel stroke and shadow before destroying
+    pcall(function() if panelStroke and panelStroke.Parent then panelStroke.Thickness = 1.5; panelStroke.Transparency = 0.2; panelStroke.Color = C.accent end end)
+    pcall(function() if shadow and shadow.Parent then shadow:Destroy() end end)
     -- Destroy all ScreenGuis
     pcall(function() if screenGui then screenGui:Destroy() end end)
     pcall(function() if wmPillGui then wmPillGui:Destroy() end end)
@@ -2343,11 +2367,20 @@ local function doEject()
         end 
     end)
     
-    -- Destroy ALL Medusa GUIs from CoreGui
+    -- Destroy ALL Medusa GUIs from CoreGui (including Rainbow remnants)
     pcall(function() 
         for _, g in ipairs(CoreGui:GetChildren()) do 
-            if g.Name and g.Name:find("Medusa") then g:Destroy() end 
+            if g.Name and (g.Name:find("Medusa") or g.Name:find("Rainbow") or g.Name:find("Cursor") or g.Name:find("ActiveHUD") or g.Name:find("Cinematic")) then g:Destroy() end 
         end 
+    end)
+    -- Also sweep gethui() if available
+    pcall(function()
+        local hui = gethui and gethui()
+        if hui then
+            for _, g in ipairs(hui:GetChildren()) do
+                if g.Name and (g.Name:find("Medusa") or g.Name:find("Rainbow") or g.Name:find("Cursor")) then g:Destroy() end
+            end
+        end
     end)
     
     -- Clear ESP data tables (memory leak prevention)
@@ -2378,18 +2411,23 @@ local function doEject()
     obj.killFeed = {}
     notifStack = {}
     
-    -- Restore character state
+    -- Restore character state (FULL COLLISION RESTORE)
+    st.noclip = false -- kill noclip loop
     pcall(function()
         local char = player.Character
         if char then
             local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then hum.WalkSpeed = 16; hum.JumpPower = 50 end
+            if hum then hum.WalkSpeed = 16; hum.JumpPower = 50; hum.CameraOffset = Vector3.new(0,0,0) end
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.CanCollide = true; hrp.Velocity = Vector3.new(0,0,0) end
             for _, p in ipairs(char:GetDescendants()) do
                 if p:IsA("BasePart") then p.CanCollide = true end
                 if p:IsA("BodyVelocity") or p:IsA("BodyGyro") then p:Destroy() end
             end
         end
     end)
+    -- Force noclip OFF globally
+    pcall(function() if getgenv then getgenv().Noclip = false end end)
     
     -- Restore camera FULLY (Fix: camera stuck after eject)
     pcall(function() 
