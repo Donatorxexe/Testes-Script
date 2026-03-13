@@ -731,7 +731,24 @@ local function mkSyncToggle(parent, text, stateKey, order, extraCallback)
     local setVisual = mkToggle(parent, text, st[stateKey], order, function(on)
         st[stateKey] = on; if extraCallback then extraCallback(on) end
     end)
-    obj.toggleRegistry[stateKey] = { setVisual = setVisual }
+    obj.toggleRegistry[stateKey] = { setVisual = setVisual, knob = nil }
+    -- Try to find the knob in the toggle we just created
+    pcall(function()
+        local lastRow = parent:FindFirstChildWhichIsA("Frame", true)
+        if lastRow then
+            local track = nil
+            for _, c in ipairs(lastRow:GetChildren()) do
+                if c:IsA("Frame") and c:FindFirstChild("Frame") then track = c; break end
+            end
+            if track then
+                for _, c in ipairs(track:GetChildren()) do
+                    if c:IsA("Frame") and c.ZIndex == 2 then
+                        obj.toggleRegistry[stateKey].knob = c; break
+                    end
+                end
+            end
+        end
+    end)
     return setVisual
 end
 
@@ -921,93 +938,123 @@ local function Notify(titleOrText, textOrColor, durationOrNil)
 
     local sg = createGui("MedusaNotif")
     local fr = Instance.new("Frame")
-    fr.Size = UDim2.new(0, 320, 0, 70)
-    fr.Position = UDim2.new(1, 340, 1, -80 - (#notifStack * 78))
-    fr.BackgroundColor3 = C.glass; fr.BackgroundTransparency = 0.08
+    fr.Size = UDim2.new(0, 340, 0, 78)
+    fr.Position = UDim2.new(1, 360, 1, -90 - (#notifStack * 86))
+    fr.BackgroundColor3 = C.glass; fr.BackgroundTransparency = 0.06
     fr.BorderSizePixel = 0; fr.Parent = sg
-    mkCorner(fr, 14)
-    local sk = Instance.new("UIStroke", fr); sk.Color = color; sk.Thickness = 1.5; sk.Transparency = 0.15
+    mkCorner(fr, 12)
+    
+    -- Toast stroke — uses accent color with rainbow support
+    local sk = Instance.new("UIStroke", fr); sk.Color = color; sk.Thickness = 1.5; sk.Transparency = 0.1
+    -- Register for rainbow if RGB is on
+    if cfg.rgb.stroke then
+        table.insert(obj.rgbElements, { obj = sk, prop = "Color", type = "stroke" })
+    end
 
-    -- Glass gradient
+    -- Glass gradient (premium)
     local grad = Instance.new("UIGradient", fr)
-    grad.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, C.glass), ColorSequenceKeypoint.new(1, C.bg) })
-    grad.Rotation = 135
+    grad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 40)),
+        ColorSequenceKeypoint.new(0.5, C.glass),
+        ColorSequenceKeypoint.new(1, C.bg)
+    })
+    grad.Rotation = 145
 
-    -- Left accent bar (thick neon)
+    -- Left accent neon bar (animated — grows in from top)
     local bar = Instance.new("Frame")
-    bar.Size = UDim2.new(0, 4, 0.7, 0); bar.Position = UDim2.new(0, 10, 0.15, 0)
+    bar.Size = UDim2.new(0, 3, 0, 0); bar.Position = UDim2.new(0, 8, 0.1, 0)
     bar.BackgroundColor3 = color; bar.BorderSizePixel = 0; bar.Parent = fr
     mkCorner(bar, 2)
+    TS:Create(bar, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 3, 0.8, 0)
+    }):Play()
 
-    -- Accent glow behind bar
+    -- Neon glow behind bar
     local barGlow = Instance.new("Frame")
-    barGlow.Size = UDim2.new(0, 12, 0.7, 0); barGlow.Position = UDim2.new(0, 6, 0.15, 0)
-    barGlow.BackgroundColor3 = color; barGlow.BackgroundTransparency = 0.7
+    barGlow.Size = UDim2.new(0, 14, 0.8, 0); barGlow.Position = UDim2.new(0, 4, 0.1, 0)
+    barGlow.BackgroundColor3 = color; barGlow.BackgroundTransparency = 0.75
     barGlow.BorderSizePixel = 0; barGlow.ZIndex = 0; barGlow.Parent = fr
-    mkCorner(barGlow, 4)
+    mkCorner(barGlow, 6)
 
-    -- Title label (bold)
+    -- Icon circle (accent colored dot)
+    local iconDot = Instance.new("Frame")
+    iconDot.Size = UDim2.new(0, 6, 0, 6); iconDot.Position = UDim2.new(0, 20, 0, 12)
+    iconDot.BackgroundColor3 = color; iconDot.BorderSizePixel = 0; iconDot.Parent = fr
+    mkCorner(iconDot, 3)
+
+    -- Title label (bold + icon)
     local titleLbl = Instance.new("TextLabel")
-    titleLbl.Size = UDim2.new(1, -36, 0, 18); titleLbl.Position = UDim2.new(0, 22, 0, 8)
+    titleLbl.Size = UDim2.new(1, -44, 0, 16); titleLbl.Position = UDim2.new(0, 30, 0, 8)
     titleLbl.BackgroundTransparency = 1; titleLbl.Font = Enum.Font.GothamBlack
-    titleLbl.TextSize = 12; titleLbl.TextColor3 = color
+    titleLbl.TextSize = 11; titleLbl.TextColor3 = color
     titleLbl.TextXAlignment = Enum.TextXAlignment.Left; titleLbl.Text = title; titleLbl.Parent = fr
 
-    -- Main text
+    -- Main text (message)
     local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -36, 0, 20); lbl.Position = UDim2.new(0, 22, 0, 26)
+    lbl.Size = UDim2.new(1, -44, 0, 22); lbl.Position = UDim2.new(0, 30, 0, 26)
     lbl.BackgroundTransparency = 1; lbl.Font = Enum.Font.GothamSemibold
     lbl.TextSize = 13; lbl.TextColor3 = Color3.new(1, 1, 1)
     lbl.TextXAlignment = Enum.TextXAlignment.Left; lbl.TextWrapped = true
     lbl.Text = text; lbl.Parent = fr
 
-    -- Timestamp
+    -- Timestamp + version
     local timeLbl = Instance.new("TextLabel")
-    timeLbl.Size = UDim2.new(1, -36, 0, 12); timeLbl.Position = UDim2.new(0, 22, 0, 48)
+    timeLbl.Size = UDim2.new(1, -44, 0, 12); timeLbl.Position = UDim2.new(0, 30, 0, 50)
     timeLbl.BackgroundTransparency = 1; timeLbl.Font = Enum.Font.Gotham
     timeLbl.TextSize = 9; timeLbl.TextColor3 = C.textMuted
     timeLbl.TextXAlignment = Enum.TextXAlignment.Left
     timeLbl.Text = "MEDUSA v15.1 • " .. os.date("%H:%M:%S"); timeLbl.Parent = fr
 
-    -- Progress bar (shrinks over duration)
-    local prog = Instance.new("Frame")
-    prog.Size = UDim2.new(1, -20, 0, 2); prog.Position = UDim2.new(0, 10, 1, -6)
-    prog.BackgroundColor3 = color; prog.BackgroundTransparency = 0.2
-    prog.BorderSizePixel = 0; prog.Parent = fr
-    mkCorner(prog, 1)
-    TS:Create(prog, TweenInfo.new(duration, Enum.EasingStyle.Linear), { Size = UDim2.new(0, 0, 0, 2) }):Play()
+    -- Progress bar (premium — glass track + colored fill that shrinks)
+    local progTrack = Instance.new("Frame")
+    progTrack.Size = UDim2.new(1, -24, 0, 3); progTrack.Position = UDim2.new(0, 12, 1, -8)
+    progTrack.BackgroundColor3 = Color3.fromRGB(40, 40, 50); progTrack.BackgroundTransparency = 0.4
+    progTrack.BorderSizePixel = 0; progTrack.Parent = fr
+    mkCorner(progTrack, 2)
 
-    -- Close button (X)
+    local progFill = Instance.new("Frame")
+    progFill.Size = UDim2.new(1, 0, 1, 0)
+    progFill.BackgroundColor3 = color; progFill.BackgroundTransparency = 0.15
+    progFill.BorderSizePixel = 0; progFill.Parent = progTrack
+    mkCorner(progFill, 2)
+    TS:Create(progFill, TweenInfo.new(duration, Enum.EasingStyle.Linear), { Size = UDim2.new(0, 0, 1, 0) }):Play()
+
+    -- Close button (X) with hover
     local closeN = Instance.new("TextButton")
-    closeN.Size = UDim2.new(0, 20, 0, 20); closeN.Position = UDim2.new(1, -26, 0, 4)
+    closeN.Size = UDim2.new(0, 22, 0, 22); closeN.Position = UDim2.new(1, -28, 0, 4)
     closeN.BackgroundTransparency = 1; closeN.Font = Enum.Font.GothamBold
     closeN.TextSize = 14; closeN.TextColor3 = C.textMuted; closeN.Text = "×"
     closeN.AutoButtonColor = false; closeN.Parent = fr
+    closeN.MouseEnter:Connect(function() TS:Create(closeN, TweenInfo.new(0.15), { TextColor3 = C.error }):Play() end)
+    closeN.MouseLeave:Connect(function() TS:Create(closeN, TweenInfo.new(0.15), { TextColor3 = C.textMuted }):Play() end)
 
     -- Stack management
     table.insert(notifStack, { gui = sg, frame = fr })
     if #notifStack > MAX_NOTIFS then local old = table.remove(notifStack, 1); pcall(function() old.gui:Destroy() end) end
     for i, n in ipairs(notifStack) do
-        TS:Create(n.frame, TweenInfo.new(0.35, Enum.EasingStyle.Back), {
-            Position = UDim2.new(1, -340, 1, -80 - ((#notifStack - i) * 78))
+        TS:Create(n.frame, TweenInfo.new(0.4, Enum.EasingStyle.Back), {
+            Position = UDim2.new(1, -360, 1, -90 - ((#notifStack - i) * 86))
         }):Play()
     end
-    -- Slide in from right
-    fr:TweenPosition(UDim2.new(1, -340, 1, -80), Enum.EasingDirection.Out, Enum.EasingStyle.Back, 0.5, true)
+    -- Slide in from right (premium elastic bounce)
+    fr:TweenPosition(UDim2.new(1, -360, 1, -90), Enum.EasingDirection.Out, Enum.EasingStyle.Back, 0.5, true)
 
-    -- Auto-dismiss function
+    -- Auto-dismiss function (premium slide-out + fade)
     local function dismissNotif()
-        TS:Create(fr, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {
-            Position = UDim2.new(1, 340, fr.Position.Y.Scale, fr.Position.Y.Offset),
+        -- Slide out to the right with fade
+        TS:Create(fr, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+            Position = UDim2.new(1, 380, fr.Position.Y.Scale, fr.Position.Y.Offset),
             BackgroundTransparency = 1,
         }):Play()
-        TS:Create(sk, TweenInfo.new(0.4), { Transparency = 1 }):Play()
+        TS:Create(sk, TweenInfo.new(0.35), { Transparency = 1 }):Play()
+        TS:Create(bar, TweenInfo.new(0.3), { BackgroundTransparency = 1 }):Play()
+        TS:Create(barGlow, TweenInfo.new(0.3), { BackgroundTransparency = 1 }):Play()
         task.wait(0.5)
         for i, n in ipairs(notifStack) do if n.gui == sg then table.remove(notifStack, i); break end end
-        -- Restack remaining
+        -- Restack remaining with smooth animation
         for i, n in ipairs(notifStack) do
-            TS:Create(n.frame, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
-                Position = UDim2.new(1, -340, 1, -80 - ((#notifStack - i) * 78))
+            TS:Create(n.frame, TweenInfo.new(0.35, Enum.EasingStyle.Quint), {
+                Position = UDim2.new(1, -360, 1, -90 - ((#notifStack - i) * 86))
             }):Play()
         end
         pcall(function() sg:Destroy() end)
@@ -1020,6 +1067,31 @@ local function Notify(titleOrText, textOrColor, durationOrNil)
 end
 -- Backwards compatible alias
 local notify = Notify
+
+-- ══════════════════════════════════════════════════════════════
+--  S8B: DYNAMIC BLUR SYSTEM (Glassmorphism Real)
+-- ══════════════════════════════════════════════════════════════
+local blurEffect = nil
+local function showBlur()
+    pcall(function()
+        if blurEffect and blurEffect.Parent then return end -- already visible
+        blurEffect = Instance.new("BlurEffect")
+        blurEffect.Name = "MedusaBlur"
+        blurEffect.Size = 0
+        blurEffect.Parent = Lighting
+        TS:Create(blurEffect, TweenInfo.new(0.4, Enum.EasingStyle.Quint), { Size = 15 }):Play()
+    end)
+end
+local function hideBlur()
+    pcall(function()
+        if blurEffect and blurEffect.Parent then
+            TS:Create(blurEffect, TweenInfo.new(0.4, Enum.EasingStyle.Quint), { Size = 0 }):Play()
+            task.delay(0.5, function()
+                pcall(function() if blurEffect then blurEffect:Destroy(); blurEffect = nil end end)
+            end)
+        end
+    end)
+end
 
 -- ══════════════════════════════════════════════════════════════
 --  S9: SMOOTH DRAG SYSTEM
@@ -1044,15 +1116,7 @@ end
 local screenGui = createGui("MedusaMain")
 obj.wmGui = screenGui
 
--- Deep shadow
-local shadow = Instance.new("ImageLabel")
-shadow.Size = UDim2.new(0, cfg.gui.panelW + 40, 0, cfg.gui.panelH + 40)
-shadow.Position = UDim2.new(1, -(cfg.gui.panelW + 24) - 20, 0.5, -cfg.gui.panelH / 2 - 20)
-shadow.BackgroundTransparency = 1; shadow.ImageTransparency = 0.45
-shadow.Image = "rbxassetid://1316045217"; shadow.ImageColor3 = C.neonGlow
-shadow.ScaleType = Enum.ScaleType.Slice; shadow.SliceCenter = Rect.new(10, 10, 118, 118)
-shadow.ZIndex = 0; shadow.Parent = screenGui
-table.insert(obj.themeElements, { obj = shadow, prop = "ImageColor3" })
+-- (Shadow REMOVED — was causing giant rainbow square bug)
 
 -- Frosted glass panel
 local panel = Instance.new("Frame")
@@ -1110,12 +1174,14 @@ sidebarLine.Size = UDim2.new(0, 1, 1, 0); sidebarLine.Position = UDim2.new(1, 0,
 sidebarLine.BackgroundColor3 = C.border; sidebarLine.BackgroundTransparency = 0.45
 sidebarLine.BorderSizePixel = 0; sidebarLine.ZIndex = 3; sidebarLine.Parent = sidebarOuter
 
--- UIListLayout for tab buttons in sidebar
+-- UIListLayout for tab buttons in sidebar (MANDATORY for non-overlapping)
 local sideLayout = Instance.new("UIListLayout", sidebar)
 sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
-sideLayout.Padding = UDim.new(0, 3)
+sideLayout.Padding = UDim.new(0, 5)
+sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 local sidePad = Instance.new("UIPadding", sidebar)
-sidePad.PaddingTop = UDim.new(0, 3); sidePad.PaddingBottom = UDim.new(0, 3)
+sidePad.PaddingTop = UDim.new(0, 5); sidePad.PaddingBottom = UDim.new(0, 5)
+sidePad.PaddingLeft = UDim.new(0, 2); sidePad.PaddingRight = UDim.new(0, 2)
 
 -- Tab indicator with glow (inside scrollable sidebar)
 local tabIndicator = Instance.new("Frame")
@@ -1200,11 +1266,13 @@ local TABS = {
 -- Create tab buttons and scroll frames
 for i, tab in ipairs(TABS) do
     local tbtn = Instance.new("TextButton")
-    tbtn.Size = UDim2.new(1, 0, 0, cfg.gui.sidebarW)
+    tbtn.Size = UDim2.new(1, -4, 0, 38)
     tbtn.LayoutOrder = i
-    tbtn.BackgroundTransparency = 1; tbtn.Font = Enum.Font.Unknown
+    tbtn.BackgroundTransparency = 1; tbtn.BorderSizePixel = 0
+    tbtn.Font = Enum.Font.Unknown
     tbtn.TextSize = 20; tbtn.TextColor3 = C.textMuted; tbtn.Text = tab.icon
-    tbtn.ZIndex = 4; tbtn.Parent = sidebar
+    tbtn.ZIndex = 5; tbtn.Parent = sidebar
+    tbtn.AutoButtonColor = false
 
     local tooltip = Instance.new("TextLabel")
     tooltip.Size = UDim2.new(0, 75, 0, 24); tooltip.Position = UDim2.new(1, 10, 0.5, -12)
@@ -1636,7 +1704,7 @@ do local tab = obj.tabFrames["binds"]; if tab then
         b.MouseButton1Click:Connect(function()
             if listening then return end; listening = true; b.Text = "..."; b.TextColor3 = C.warning
             local conn; conn = UIS.InputBegan:Connect(function(inp, gp) if gp then return end
-                if inp.KeyCode ~= Enum.KeyCode.Unknown then keybinds[key] = inp.KeyCode; b.Text = inp.KeyCode.Name; b.TextColor3 = C.accent; listening = false; conn:Disconnect() end
+                if inp.KeyCode ~= Enum.KeyCode.Unknown then keybinds[key] = inp.KeyCode; b.Text = inp.KeyCode.Name; b.TextColor3 = C.accent; listening = false; conn:Disconnect(); autoSave() end
             end)
         end)
     end
@@ -2286,27 +2354,50 @@ task.spawn(function()
             elseif el.type == "title" and cfg.rgb.title then el.obj[el.prop] = rgbColor
             elseif el.type == "indicator" and cfg.rgb.indicator then el.obj[el.prop] = rgbColor end
         end) end
-        -- Subtle glow pulse (NOT the massive thickness change)
+        -- Subtle stroke pulse only (NO shadow — was causing giant square)
         if cfg.rgb.stroke or cfg.rgb.title then pcall(function()
             if not panelStroke or not panelStroke.Parent then return end
             local pulse = math.sin(pulsePhase) * 0.5 + 0.5
-            -- SUBTLE: only oscillate thickness 1.5 to 2.5 (not 4!)
-            panelStroke.Thickness = 1.5 + pulse * 1.0
-            panelStroke.Transparency = 0.1 + (1 - pulse) * 0.2
-            -- Shadow: subtle color shift only
-            if shadow and shadow.Parent then
-                shadow.ImageColor3 = cfg.rgb.stroke and rgbColor or C.accent
-                shadow.ImageTransparency = 0.4 + (1 - pulse) * 0.15
-            end
+            panelStroke.Thickness = 1.5 + pulse * 0.5
+            panelStroke.Transparency = 0.15 + (1 - pulse) * 0.15
         end) else pcall(function()
             if panelStroke and panelStroke.Parent then panelStroke.Thickness = 1.5; panelStroke.Transparency = 0.2 end
-            if shadow and shadow.Parent then shadow.ImageColor3 = C.accent; shadow.ImageTransparency = 0.45 end
+        end) end
+        -- INTELLIGENT RAINBOW: Apply to sidebar emoji TextStrokeColor3 + active toggle dots
+        if st.rainbow then pcall(function()
+            -- Sidebar emojis: change text color with rainbow
+            for _, child in ipairs(sidebar:GetChildren()) do
+                if child:IsA("TextButton") then
+                    child.TextStrokeColor3 = rgbColor
+                    child.TextStrokeTransparency = 0.5
+                end
+            end
+            -- Active toggle knobs: pulse with rainbow
+            for key, reg in pairs(obj.toggleRegistry) do
+                if st[key] and reg.knob then
+                    pcall(function() reg.knob.BackgroundColor3 = rgbColor end)
+                end
+            end
+        end) else pcall(function()
+            -- Reset sidebar emojis
+            for _, child in ipairs(sidebar:GetChildren()) do
+                if child:IsA("TextButton") then child.TextStrokeTransparency = 1 end
+            end
+            -- Reset toggle knobs to accent
+            for key, reg in pairs(obj.toggleRegistry) do
+                if st[key] and reg.knob then
+                    pcall(function() reg.knob.BackgroundColor3 = C.accent end)
+                end
+            end
         end) end
     end
     -- CLEANUP: Reset to defaults when loop dies
     pcall(function()
         if panelStroke and panelStroke.Parent then panelStroke.Thickness = 1.5; panelStroke.Transparency = 0.2; panelStroke.Color = C.accent end
-        if shadow and shadow.Parent then shadow.ImageColor3 = C.accent; shadow.ImageTransparency = 0.45 end
+        -- Reset sidebar emoji strokes
+        for _, child in ipairs(sidebar:GetChildren()) do
+            if child:IsA("TextButton") then child.TextStrokeTransparency = 1 end
+        end
     end)
 end)
 
@@ -2329,6 +2420,8 @@ local function doPanic()
     for k in pairs(st) do if k ~= "running" and k ~= "guiVisible" and k ~= "antiAfk" then st[k] = false; syncToggleVisual(k, false) end end
     clearESP(); resetAllHitboxes(); disableFly(); setFullbright(false)
     pcall(function() local c = player.Character; if c then for _, p in ipairs(c:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = true end end; local h = c:FindFirstChildOfClass("Humanoid"); if h then h.WalkSpeed = 16 end end end)
+    -- Remove blur on panic
+    pcall(function() hideBlur() end)
     obj.lockedTarget = nil; rmbDown = false; notify("🚨 All features disabled!", C.error)
 end
 
@@ -2349,9 +2442,8 @@ local function doEject()
     -- Restore default cursor
     pcall(function() UIS.MouseIconEnabled = true end)
     
-    -- Reset panel stroke and shadow before destroying
+    -- Reset panel stroke before destroying (shadow was removed — no longer exists)
     pcall(function() if panelStroke and panelStroke.Parent then panelStroke.Thickness = 1.5; panelStroke.Transparency = 0.2; panelStroke.Color = C.accent end end)
-    pcall(function() if shadow and shadow.Parent then shadow:Destroy() end end)
     -- Destroy all ScreenGuis
     pcall(function() if screenGui then screenGui:Destroy() end end)
     pcall(function() if wmPillGui then wmPillGui:Destroy() end end)
@@ -2443,6 +2535,12 @@ local function doEject()
     -- Restore mouse cursor (Fix: invisible mouse after eject)
     pcall(function() UIS.MouseIconEnabled = true end)
     
+    -- Destroy blur effect
+    pcall(function() hideBlur() end)
+    pcall(function() if blurEffect then blurEffect:Destroy(); blurEffect = nil end end)
+    -- Remove any leftover MedusaBlur from Lighting
+    pcall(function() for _, b in ipairs(Lighting:GetChildren()) do if b.Name == "MedusaBlur" then b:Destroy() end end end)
+    
     -- Restore lighting
     pcall(function() setFullbright(false) end)
     
@@ -2476,6 +2574,8 @@ addConn(UIS.InputBegan:Connect(function(i, gp)
     elseif k == keybinds.eject then notify("🗑️ Ejecting...", C.error); task.delay(0.5, doEject)
     elseif k == keybinds.toggleGui then 
         st.guiVisible = not st.guiVisible; panel.Visible = st.guiVisible
+        -- Blur effect: show when menu opens, hide when closes
+        if st.guiVisible then showBlur() else hideBlur() end
         -- INSTANT cursor hide when GUI closes (Fix: cursor ghost)
         if not st.guiVisible then
             pcall(function() if obj.cursorFrame then obj.cursorFrame.Visible = false end end)
@@ -3196,6 +3296,7 @@ task.wait(0.4)
 pcall(function() introGui:Destroy() end)
 
 -- ── Show panel + slide up animation ────────────────────────
+showBlur() -- Glassmorphism blur on startup
 panel.Visible = true
 panel.BackgroundTransparency = 1
 if sidebar then sidebar.BackgroundTransparency = 1 end
