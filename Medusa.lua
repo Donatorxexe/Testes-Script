@@ -1126,7 +1126,7 @@ panel.Size = UDim2.new(0, cfg.gui.panelW, 0, cfg.gui.panelH)
 panel.Position = UDim2.new(1, -(cfg.gui.panelW + 24), 0.5, -cfg.gui.panelH / 2)
 panel.BackgroundColor3 = C.bg; panel.BackgroundTransparency = cfg.gui.panelOpacity
 panel.BorderSizePixel = 0; panel.ClipsDescendants = true; panel.ZIndex = 1; panel.Parent = screenGui
-mkCorner(panel, 12)
+mkCorner(panel, CR)
 obj.panel = panel
 
 -- Neon border glow
@@ -1150,7 +1150,6 @@ sidebarOuter.Size = UDim2.new(0, cfg.gui.sidebarW, 1, 0)
 sidebarOuter.BackgroundColor3 = Color3.fromRGB(8, 8, 14); sidebarOuter.BackgroundTransparency = 0
 sidebarOuter.BorderSizePixel = 0; sidebarOuter.ZIndex = 3; sidebarOuter.ClipsDescendants = true
 sidebarOuter.Parent = panel
-mkCorner(sidebarOuter, 12)
 
 local sideGrad = Instance.new("UIGradient", sidebarOuter)
 sideGrad.Color = ColorSequence.new({
@@ -1188,13 +1187,12 @@ local sidePad = Instance.new("UIPadding", sidebar)
 sidePad.PaddingTop = UDim.new(0, 8); sidePad.PaddingBottom = UDim.new(0, 8)
 sidePad.PaddingLeft = UDim.new(0, 4); sidePad.PaddingRight = UDim.new(0, 4)
 
--- Tab indicator with glow (Cinematic Design)
+-- Tab indicator with glow (inside scrollable sidebar)
 local tabIndicator = Instance.new("Frame")
-tabIndicator.Size = UDim2.new(0, 4, 0, 30)
-tabIndicator.AnchorPoint = Vector2.new(1, 0.5)
-tabIndicator.Position = UDim2.new(1, 0, 0, 8 + 22)
+tabIndicator.Size = UDim2.new(0, 3, 0, 28)
+tabIndicator.Position = UDim2.new(0, 0, 0, 10)
 tabIndicator.BackgroundColor3 = C.accent; tabIndicator.BorderSizePixel = 0; tabIndicator.ZIndex = 5; tabIndicator.Parent = sidebar
-mkCorner(tabIndicator, 8)
+mkCorner(tabIndicator, 2)
 local indGlow = Instance.new("UIStroke", tabIndicator); indGlow.Color = C.accent; indGlow.Thickness = 3; indGlow.Transparency = 0.5
 table.insert(obj.rgbElements, { obj = tabIndicator, prop = "BackgroundColor3", type = "indicator" })
 table.insert(obj.rgbElements, { obj = indGlow, prop = "Color", type = "indicator" })
@@ -1345,11 +1343,11 @@ local function switchTab(id)
     end
     for i, tab in ipairs(TABS) do
         if tab.id == id then
-            -- Position relative to sidebar ScrollingFrame (no topbar offset)
-            -- padding=8, button=45, gap=10, center=22.5
-            local yPos = 8 + (i - 1) * 55 + 22
+            -- Position relative to sidebar scroll container
+            -- Each tab = 45px height + 10px padding + 8px top padding
+            local yPos = 8 + (i - 1) * (45 + 10) + 8
             TS:Create(tabIndicator, TweenInfo.new(0.25, Enum.EasingStyle.Back), {
-                Position = UDim2.new(1, 0, 0, yPos)
+                Position = UDim2.new(0, 0, 0, yPos)
             }):Play()
             -- Auto-scroll sidebar to show the active tab
             pcall(function()
