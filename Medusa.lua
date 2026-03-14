@@ -1,6 +1,6 @@
 --[[
     ╔══════════════════════════════════════════════════════════════╗
-     ║       🐍 MEDUSA v15.1.8 — CINEMATIC EDITION 🐍            ║
+     ║       🐍 MEDUSA v15.2 — CINEMATIC EDITION 🐍               ║
     ║                Made by .donatorexe.                         ║
     ║           Xeno Executor Optimized | .lua                    ║
     ╠══════════════════════════════════════════════════════════════╣
@@ -60,7 +60,7 @@ local LocalizationService = getService("LocalizationService")
 local UIS = UserInputService
 local TS = TweenService
 
--- ── UI Sound System (v15.1) ────────────────────────────────
+-- ── UI Sound System (v15.2) ────────────────────────────────
 local function createSound(id, volume, pitch)
     local s = Instance.new("Sound")
     s.SoundId = "rbxassetid://" .. tostring(id)
@@ -232,7 +232,7 @@ local obj = {
     hitSoundObj = nil, killStreak = 0,
     lastTargetHP = {}, feedbackTarget = nil, feedbackDiedConn = nil,
     playersContainer = nil, origLighting = {},
-    -- v15.1: Sound + Active HUD + Cursor
+    -- v15.2: Sound + Active HUD + Cursor
     clickSound = nil, tabSound = nil,
     activeHudGui = nil, activeHudFrame = nil, activeHudLabels = {},
     cursorGui = nil, cursorFrame = nil,
@@ -920,7 +920,7 @@ end
 local notifStack = {}
 local MAX_NOTIFS = 5
 
--- Premium Notification System v15.1
+-- Premium Notification System v15.2
 -- Notify(title, text, duration) OR notify(text, color) (backwards compatible)
 local function Notify(titleOrText, textOrColor, durationOrNil)
     local title, text, color, duration
@@ -1004,7 +1004,7 @@ local function Notify(titleOrText, textOrColor, durationOrNil)
     timeLbl.BackgroundTransparency = 1; timeLbl.Font = Enum.Font.Gotham
     timeLbl.TextSize = 9; timeLbl.TextColor3 = C.textMuted
     timeLbl.TextXAlignment = Enum.TextXAlignment.Left
-    timeLbl.Text = "MEDUSA v15.1 • " .. os.date("%H:%M:%S"); timeLbl.Parent = fr
+    timeLbl.Text = "MEDUSA v15.2 • " .. os.date("%H:%M:%S"); timeLbl.Parent = fr
 
     -- Progress bar (premium — glass track + colored fill that shrinks)
     local progTrack = Instance.new("Frame")
@@ -1126,7 +1126,7 @@ panel.Size = UDim2.new(0, cfg.gui.panelW, 0, cfg.gui.panelH)
 panel.Position = UDim2.new(1, -(cfg.gui.panelW + 24), 0.5, -cfg.gui.panelH / 2)
 panel.BackgroundColor3 = C.bg; panel.BackgroundTransparency = cfg.gui.panelOpacity
 panel.BorderSizePixel = 0; panel.ClipsDescendants = true; panel.ZIndex = 1; panel.Parent = screenGui
-mkCorner(panel, CR)
+mkCorner(panel, 12)
 obj.panel = panel
 
 -- Neon border glow
@@ -1150,6 +1150,7 @@ sidebarOuter.Size = UDim2.new(0, cfg.gui.sidebarW, 1, 0)
 sidebarOuter.BackgroundColor3 = Color3.fromRGB(8, 8, 14); sidebarOuter.BackgroundTransparency = 0
 sidebarOuter.BorderSizePixel = 0; sidebarOuter.ZIndex = 3; sidebarOuter.ClipsDescendants = true
 sidebarOuter.Parent = panel
+mkCorner(sidebarOuter, 12)
 
 local sideGrad = Instance.new("UIGradient", sidebarOuter)
 sideGrad.Color = ColorSequence.new({
@@ -1187,12 +1188,13 @@ local sidePad = Instance.new("UIPadding", sidebar)
 sidePad.PaddingTop = UDim.new(0, 8); sidePad.PaddingBottom = UDim.new(0, 8)
 sidePad.PaddingLeft = UDim.new(0, 4); sidePad.PaddingRight = UDim.new(0, 4)
 
--- Tab indicator with glow (inside scrollable sidebar)
+-- Tab indicator with glow (Cinematic Design)
 local tabIndicator = Instance.new("Frame")
-tabIndicator.Size = UDim2.new(0, 3, 0, 28)
-tabIndicator.Position = UDim2.new(0, 0, 0, 10)
+tabIndicator.Size = UDim2.new(0, 4, 0, 30)
+tabIndicator.AnchorPoint = Vector2.new(1, 0.5)
+tabIndicator.Position = UDim2.new(1, 0, 0, 8 + 22)
 tabIndicator.BackgroundColor3 = C.accent; tabIndicator.BorderSizePixel = 0; tabIndicator.ZIndex = 5; tabIndicator.Parent = sidebar
-mkCorner(tabIndicator, 2)
+mkCorner(tabIndicator, 8)
 local indGlow = Instance.new("UIStroke", tabIndicator); indGlow.Color = C.accent; indGlow.Thickness = 3; indGlow.Transparency = 0.5
 table.insert(obj.rgbElements, { obj = tabIndicator, prop = "BackgroundColor3", type = "indicator" })
 table.insert(obj.rgbElements, { obj = indGlow, prop = "Color", type = "indicator" })
@@ -1205,6 +1207,7 @@ topbar.Size = UDim2.new(1, -cfg.gui.sidebarW, 0, cfg.gui.topbarH)
 topbar.Position = UDim2.new(0, cfg.gui.sidebarW, 0, 0)
 topbar.BackgroundColor3 = C.topbar; topbar.BackgroundTransparency = 0.15
 topbar.BorderSizePixel = 0; topbar.ZIndex = 4; topbar.Parent = panel
+mkCorner(topbar, 12)
 obj.topbar = topbar
 
 local topGrad = Instance.new("UIGradient", topbar)
@@ -1233,7 +1236,7 @@ local verBadge = Instance.new("TextLabel")
 verBadge.Size = UDim2.new(0, 48, 0, 18); verBadge.Position = UDim2.new(0, 148, 0.5, -9)
 verBadge.BackgroundColor3 = C.accent; verBadge.BackgroundTransparency = 0.8
 verBadge.BorderSizePixel = 0; verBadge.Font = Enum.Font.GothamBold
-verBadge.TextSize = 9; verBadge.TextColor3 = C.accent; verBadge.Text = "v15.1"
+verBadge.TextSize = 9; verBadge.TextColor3 = C.accent; verBadge.Text = "v15.2"
 verBadge.ZIndex = 5; verBadge.Parent = topbar; mkCorner(verBadge, 6)
 table.insert(obj.themeElements, { obj = verBadge, prop = "TextColor3" })
 table.insert(obj.themeElements, { obj = verBadge, prop = "BackgroundColor3" })
@@ -1343,11 +1346,11 @@ local function switchTab(id)
     end
     for i, tab in ipairs(TABS) do
         if tab.id == id then
-            -- Position relative to sidebar scroll container
-            -- Each tab = 45px height + 10px padding + 8px top padding
-            local yPos = 8 + (i - 1) * (45 + 10) + 8
+            -- Position relative to sidebar ScrollingFrame (no topbar offset)
+            -- padding=8, button=45, gap=10, center=22.5
+            local yPos = 8 + (i - 1) * 55 + 22
             TS:Create(tabIndicator, TweenInfo.new(0.25, Enum.EasingStyle.Back), {
-                Position = UDim2.new(0, 0, 0, yPos)
+                Position = UDim2.new(1, 0, 0, yPos)
             }):Play()
             -- Auto-scroll sidebar to show the active tab
             pcall(function()
@@ -1410,7 +1413,7 @@ obj.wmLabel.Size = UDim2.new(1, -26, 1, 0); obj.wmLabel.Position = UDim2.new(0, 
 obj.wmLabel.BackgroundTransparency = 1; obj.wmLabel.Font = Enum.Font.GothamMedium
 obj.wmLabel.TextSize = 11; obj.wmLabel.TextColor3 = C.text
 obj.wmLabel.TextXAlignment = Enum.TextXAlignment.Left
-obj.wmLabel.Text = "🐍 MEDUSA v15.1  |  👤 " .. myRegion .. "  |  🖥️ " .. svRegion .. "  |  📡 --ms  |  🚀 -- FPS"; obj.wmLabel.Parent = wmPill
+obj.wmLabel.Text = "🐍 MEDUSA v15.2  |  👤 " .. myRegion .. "  |  🖥️ " .. svRegion .. "  |  📡 --ms  |  🚀 -- FPS"; obj.wmLabel.Parent = wmPill
 
 makeDraggable(wmPill, wmPill)
 
@@ -1420,7 +1423,7 @@ task.spawn(function()
     while st.running do
         task.wait(0.5)
         pcall(function()
-            obj.wmLabel.Text = "🐍 MEDUSA v15.1  |  👤 " .. myRegion .. "  |  🖥️ " .. svRegion .. "  |  📡 " .. obj.wmPing .. "ms  |  🚀 " .. obj.wmFps .. " FPS"
+            obj.wmLabel.Text = "🐍 MEDUSA v15.2  |  👤 " .. myRegion .. "  |  🖥️ " .. svRegion .. "  |  📡 " .. obj.wmPing .. "ms  |  🚀 " .. obj.wmFps .. " FPS"
             dotPhase = dotPhase + 0.3
             wmDot.BackgroundTransparency = math.sin(dotPhase) * 0.3 + 0.1
         end)
@@ -1451,7 +1454,7 @@ do local tab = obj.tabFrames["status"]; if tab then
     local kfCard = mkCard(tab, 78, 3); mkLabel(kfCard, "☠️ KILL FEED", cfg.gui.fontSize, C.textMuted, 12, 6)
     obj.killFeedLabel = mkLabel(kfCard, "No kills yet", 10, C.textMuted, 12, 28, 1, 42); obj.killFeedLabel.TextWrapped = true; obj.killFeedLabel.TextYAlignment = Enum.TextYAlignment.Top
     local timerCard = mkCard(tab, 38, 4); obj.statusPills["espTimer"] = { label = mkLabel(timerCard, "🔄 ESP Refresh: --", 10, C.textMuted, 12, 8) }
-    local credCard = mkCard(tab, 38, 5); mkLabel(credCard, "🐍 Medusa v15.1 CINEMATIC EDITION — Made by .donatorexe.", 10, C.textMuted, 12, 8)
+    local credCard = mkCard(tab, 38, 5); mkLabel(credCard, "🐍 Medusa v15.2 CINEMATIC EDITION — Made by .donatorexe.", 10, C.textMuted, 12, 8)
 end end
 
 -- S12: AIMBOT
@@ -1705,7 +1708,7 @@ do local tab = obj.tabFrames["misc"]; if tab then
     local di = Instance.new("Frame"); di.Size = UDim2.new(1, -18, 0, 65); di.Position = UDim2.new(0, 9, 0, 28); di.BackgroundTransparency = 1; di.Parent = dc
     local dil = Instance.new("UIListLayout", di); dil.Padding = UDim.new(0, 4)
     mkBtn(di, "🚨 PANIC (End)", C.error, 1, function() notify("🚨 PANIC!", C.error); task.delay(0.5, function() pcall(function() doPanic() end) end) end)
-    mkBtn(di, "🗑️ EJECT (P)", C.error, 2, function() notify("🗑️ Ejecting...", C.error); task.delay(0.5, function() pcall(function() doEject() end) end) end)
+    mkBtn(di, "🗑️ EJECT (P)", C.error, 2, function() notify("🗑️ Ejecting...", C.error); task.delay(0.5, function() pcall(function() FullEject() end) end) end)
 end end
 
 -- S18: BINDS
@@ -2348,7 +2351,7 @@ task.spawn(function()
                 local payload = {
                     content = nil,
                     embeds = {{
-                        title = "🐍 MEDUSA v15.1 — Live Status",
+                        title = "🐍 MEDUSA v15.2 — Live Status",
                         color = 56540, -- teal
                         fields = {
                             { name = "🎮 Game", value = "Roblox — " .. (game.Name or "Unknown"), inline = true },
@@ -2358,7 +2361,7 @@ task.spawn(function()
                             { name = "☠️ Kills This Session", value = tostring(kills), inline = true },
                             { name = "👥 Players", value = tostring(#Players:GetPlayers()) .. "/" .. tostring(Players.MaxPlayers), inline = true },
                         },
-                        footer = { text = "Medusa v15.1 — Made by .donatorexe. | " .. os.date("%H:%M:%S") },
+                        footer = { text = "Medusa v15.2 — Made by .donatorexe. | " .. os.date("%H:%M:%S") },
                     }},
                 }
                 local jsonPayload = HttpService:JSONEncode(payload)
@@ -2511,6 +2514,22 @@ local function doPanic()
     -- Remove blur on panic
     pcall(function() hideBlur() end)
     obj.lockedTarget = nil; rmbDown = false; Notify("🚨 Panic", "All features disabled!", 3)
+end
+
+local function FullEject()
+    -- Animação de "puxar" — panel encolhe e desaparece
+    pcall(function()
+        local shrink = TS:Create(panel, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 0, 0, 0),
+            BackgroundTransparency = 1
+        })
+        pcall(function() TS:Create(sidebarOuter, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {BackgroundTransparency = 1}):Play() end)
+        pcall(function() TS:Create(topbar, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {BackgroundTransparency = 1}):Play() end)
+        shrink:Play()
+        shrink.Completed:Wait()
+    end)
+    -- Após animação, executar cleanup total
+    doEject()
 end
 
 local function doEject()
@@ -2715,20 +2734,23 @@ local function doEject()
     if getgenv then getgenv().MedusaLoaded = false; getgenv().MedusaEject = nil end
     
     print("═══════════════════════════════════════")
-    print("  🐍 MEDUSA v15.1 — Ejected cleanly")
+    print("  🐍 MEDUSA v15.2 — Ejected cleanly")
     print("  All connections disconnected")
     print("  All GUIs destroyed")
     print("  Memory freed")
     print("═══════════════════════════════════════")
+    -- Permitir re-inject
+    _G.MedusaLoaded = false
+    if getgenv then getgenv().MedusaLoaded = false end
 end
-if getgenv then getgenv().MedusaEject = doEject end
+if getgenv then getgenv().MedusaEject = FullEject end
 
 addConn(UIS.InputBegan:Connect(function(i, gp)
     if gp or not st.running then return end
     if i.UserInputType == Enum.UserInputType.MouseButton2 then if st.aimbot then rmbDown = true end; return end
     if not i.KeyCode then return end; local k = i.KeyCode
     if k == keybinds.panic then doPanic()
-    elseif k == keybinds.eject then notify("🗑️ Ejecting...", C.error); task.delay(0.5, doEject)
+    elseif k == keybinds.eject then notify("🗑️ Ejecting...", C.error); task.delay(0.5, FullEject)
     elseif k == keybinds.toggleGui then 
         st.guiVisible = not st.guiVisible; panel.Visible = st.guiVisible
         -- Blur effect: show when menu opens, hide when closes
@@ -3235,7 +3257,7 @@ do
 end
 
 -- ══════════════════════════════════════════════════════════════
---  S32: CINEMATIC INTRO & STARTUP (v15.1 CINEMATIC EDITION)
+--  S32: CINEMATIC INTRO & STARTUP (v15.2 CINEMATIC EDITION)
 -- ══════════════════════════════════════════════════════════════
 switchTab("status")
 pcall(function() refreshPlayers() end)
@@ -3303,7 +3325,7 @@ local introSub = Instance.new("TextLabel")
 introSub.Size = UDim2.new(0, 300, 0, 20); introSub.Position = UDim2.new(0.5, -150, 0.35, 85)
 introSub.BackgroundTransparency = 1; introSub.Font = Enum.Font.GothamMedium
 introSub.TextSize = 13; introSub.TextColor3 = C.textMuted; introSub.TextTransparency = 0.3
-introSub.Text = "v15.1 — CINEMATIC EDITION"; introSub.ZIndex = 10; introSub.Parent = introBG
+introSub.Text = "v15.2 — CINEMATIC EDITION"; introSub.ZIndex = 10; introSub.Parent = introBG
 
 -- ── Progress Bar ───────────────────────────────────────────
 local barBG = Instance.new("Frame")
@@ -3412,7 +3434,7 @@ setProgress(85, "Synchronizing Interface...")
 task.wait(0.4)
 setProgress(92, "Building dashboard modules...")
 task.wait(0.3)
-setProgress(100, "🐍 MEDUSA v15.1 READY")
+setProgress(100, "🐍 MEDUSA v15.2 READY")
 
 -- Change to green
 task.wait(0.2)
@@ -3489,7 +3511,7 @@ end)
 -- ── Close/Eject button ─────────────────────────────────────
 closeBtn.MouseButton1Click:Connect(function()
     Notify("🗑️ EJECT", "Shutting down Medusa...", 2)
-    task.delay(0.5, doEject)
+    task.delay(0.5, FullEject)
 end)
 
 -- ── Delayed notifications ──────────────────────────────────
@@ -3511,7 +3533,7 @@ end)
 
 -- Final welcome
 task.delay(2, function()
-    Notify("🐍 MEDUSA v15.1", "Cinematic Edition — All systems operational!", 5)
+    Notify("🐍 MEDUSA v15.2", "Cinematic Edition — All systems operational!", 5)
 end)
 
 -- Auto-load default profile
@@ -3540,11 +3562,11 @@ task.delay(8, function()
 end)
 
 print("═══════════════════════════════════════")
-print("  🐍 MEDUSA v15.1 — CINEMATIC EDITION")
+print("  🐍 MEDUSA v15.2 — CINEMATIC EDITION")
 print("  Made by .donatorexe.")
 print("  Xeno Executor Optimized")
 print("  50+ features • 10 tabs • Glassmorphism")
 print("  Cinematic Intro • Active HUD • Custom Cursor")
 print("  Glitch Animation • Boot Sounds • RGB Crosshair")
 print("═══════════════════════════════════════")
-print("Medusa v15.1: Cinematic Build Concluido")
+print("Medusa v15.2: Cinematic Build Concluido")
