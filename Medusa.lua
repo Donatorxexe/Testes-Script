@@ -1379,7 +1379,7 @@ end)
 task.spawn(function()
     local frames = 0
     addConn(RS.RenderStepped:Connect(function() frames = frames + 1 end))
-    while st.running do
+    while st.running and _G.MedusaLoaded do
         task.wait(0.5); obj.wmFps = tostring(frames * 2); frames = 0
         pcall(function()
             local stats = getService("Stats")
@@ -1420,7 +1420,7 @@ makeDraggable(wmPill, wmPill)
 -- Update watermark + pulse dot
 task.spawn(function()
     local dotPhase = 0
-    while st.running do
+    while st.running and _G.MedusaLoaded do
         task.wait(0.5)
         pcall(function()
             obj.wmLabel.Text = "🐍 MEDUSA v15.2  |  👤 " .. myRegion .. "  |  🖥️ " .. svRegion .. "  |  📡 " .. obj.wmPing .. "ms  |  🚀 " .. obj.wmFps .. " FPS"
@@ -2150,7 +2150,7 @@ if XC.hookmetamethod then pcall(function()
 end) end
 
 -- Trigger Bot
-task.spawn(function() while st.running do task.wait(cfg.triggerDelay)
+task.spawn(function() while st.running and _G.MedusaLoaded do task.wait(cfg.triggerDelay)
     if st.triggerBot then local mp = UIS:GetMouseLocation()
         for _, plr in ipairs(Players:GetPlayers()) do if isValidTarget(plr) then local part = getAimPart(plr.Character)
             if part then local sp, on = camera:WorldToViewportPoint(part.Position)
@@ -2288,7 +2288,7 @@ local function addESP(plr)
     obj.espObjs[plr] = data
 end
 
-task.spawn(function() while st.running do task.wait(1)
+task.spawn(function() while st.running and _G.MedusaLoaded do task.wait(1)
     if st.esp then for _, plr in ipairs(Players:GetPlayers()) do if plr ~= player and not obj.espObjs[plr] then pcall(function() addESP(plr) end) end end
         if os.time() - lastESPRefresh >= cfg.espRefreshRate then clearESP(); lastESPRefresh = os.time() end
     else clearESP() end
@@ -2312,13 +2312,13 @@ addConn(RS.Stepped:Connect(function() if not st.running then return end; if not 
 addConn(RS.RenderStepped:Connect(function() if not st.running then return end; if not (getgenv and getgenv().MedusaLoaded) then return end; if st.speed and player.Character then local h = player.Character:FindFirstChildOfClass("Humanoid"); if h then h.WalkSpeed = cfg.walkSpeed end end end))
 addConn(UIS.JumpRequest:Connect(function() if st.infJump and player.Character then local h = player.Character:FindFirstChildOfClass("Humanoid"); if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end end end))
 addConn(RS.RenderStepped:Connect(function() if st.noFallDmg and player.Character then local h = player.Character:FindFirstChildOfClass("Humanoid"); if h then h:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false); h:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false) end end end))
-task.spawn(function() while st.running do task.wait(1/30); if st.spinBot and player.Character then local hrp = player.Character:FindFirstChild("HumanoidRootPart"); if hrp then hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(cfg.spinSpeed), 0) end end end end)
+task.spawn(function() while st.running and _G.MedusaLoaded do task.wait(1/30); if st.spinBot and player.Character then local hrp = player.Character:FindFirstChild("HumanoidRootPart"); if hrp then hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(cfg.spinSpeed), 0) end end end end)
 addConn(player.CharacterAdded:Connect(function() task.wait(0.5); if st.fly then enableFly() end end))
 
 -- Hitbox
 local bparts = {"Head","UpperTorso","LowerTorso","LeftUpperArm","RightUpperArm","LeftUpperLeg","RightUpperLeg","HumanoidRootPart"}
 function resetAllHitboxes() for plr, sizes in pairs(obj.origSizes) do if plr.Character then for nm, sz in pairs(sizes) do local p = plr.Character:FindFirstChild(nm); if p and p:IsA("BasePart") then pcall(function() p.Size = sz; p.Transparency = nm == "HumanoidRootPart" and 1 or 0 end) end end end; obj.origSizes[plr] = nil end end
-task.spawn(function() while st.running do task.wait(0.8)
+task.spawn(function() while st.running and _G.MedusaLoaded do task.wait(0.8)
     if st.hitbox then for _, plr in ipairs(Players:GetPlayers()) do if plr ~= player and isValidTarget(plr) and plr.Character then obj.origSizes[plr] = obj.origSizes[plr] or {}
         for _, nm in ipairs(bparts) do local p = plr.Character:FindFirstChild(nm); if p and p:IsA("BasePart") then pcall(function() if not obj.origSizes[plr][nm] then obj.origSizes[plr][nm] = p.Size end; p.Size = obj.origSizes[plr][nm] * (cfg.hitboxSize / 5); p.Transparency = cfg.hitboxTransparency; p.CanCollide = false end) end end
     end end else resetAllHitboxes() end
@@ -2336,7 +2336,7 @@ addConn(mouse.Button1Down:Connect(function() if st.clickTP and UIS:IsKeyDown(key
 -- ══════════════════════════════════════════════════════════════
 task.spawn(function()
     task.wait(5) -- let everything initialize first
-    while st.running do
+    while st.running and _G.MedusaLoaded do
         task.wait(cfg.discordInterval)
         if st.discordRPC and cfg.discordWebhook ~= "" then
             pcall(function()
@@ -2400,9 +2400,9 @@ end)
 -- ══════════════════════════════════════════════════════════════
 task.spawn(function()
     local hue, pulsePhase = 0, 0
-    while st.running do
+    while st.running and _G.MedusaLoaded do
         task.wait(1 / 30)
-        if not st.running then break end
+        if not st.running or not _G.MedusaLoaded then break end
         hue = (hue + cfg.rgb.speed / 300) % 1; pulsePhase = pulsePhase + 0.04
         local rgbColor = Color3.fromHSV(hue, cfg.rgb.saturation, cfg.rgb.brightness)
         -- Apply RGB only to registered elements (stroke, title, indicator)
@@ -2517,19 +2517,70 @@ local function doPanic()
 end
 
 local function FullEject()
+    if obj._ejecting then return end
+    obj._ejecting = true
+    
+    -- KILL ALL LOOPS FIRST
+    _G.MedusaLoaded = false
+    getgenv().MedusaLoaded = false
+    st.running = false
+    
     -- Animação de "puxar" — panel encolhe e desaparece
     pcall(function()
-        local shrink = TS:Create(panel, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+        local shrink = TS:Create(panel, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
             Size = UDim2.new(0, 0, 0, 0),
             BackgroundTransparency = 1
         })
-        pcall(function() TS:Create(sidebarOuter, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {BackgroundTransparency = 1}):Play() end)
-        pcall(function() TS:Create(topbar, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {BackgroundTransparency = 1}):Play() end)
+        pcall(function() TS:Create(sidebarOuter, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {BackgroundTransparency = 1}):Play() end)
+        pcall(function() TS:Create(topbar, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {BackgroundTransparency = 1}):Play() end)
         shrink:Play()
         shrink.Completed:Wait()
     end)
-    -- Após animação, executar cleanup total
+    
+    -- Cleanup total
     doEject()
+    
+    -- DESTROY ALL GUIS
+    pcall(function() if screenGui and screenGui.Parent then screenGui:Destroy() end end)
+    pcall(function() if wmGui and wmGui.Parent then wmGui:Destroy() end end)
+    pcall(function() if crossGui and crossGui.Parent then crossGui:Destroy() end end)
+    pcall(function() if fovGui and fovGui.Parent then fovGui:Destroy() end end)
+    pcall(function() if killGui and killGui.Parent then killGui:Destroy() end end)
+    pcall(function() if specGui and specGui.Parent then specGui:Destroy() end end)
+    
+    -- Sweep CoreGui for any remaining Medusa GUIs
+    pcall(function()
+        for _, g in pairs(CoreGui:GetChildren()) do
+            if g:IsA("ScreenGui") and g.Name:find("Medusa") then g:Destroy() end
+        end
+    end)
+    -- Sweep gethui
+    pcall(function()
+        if gethui then
+            for _, g in pairs(gethui():GetChildren()) do
+                if g.Name and g.Name:find("Medusa") then g:Destroy() end
+            end
+        end
+    end)
+    
+    -- NIL all GUI references
+    screenGui = nil
+    wmGui = nil
+    crossGui = nil
+    fovGui = nil
+    killGui = nil
+    specGui = nil
+    
+    -- CLEANUP DE MEMÓRIA
+    pcall(function() setmetatable(cfg, nil) end)
+    cfg = nil
+    obj = nil
+    st = nil
+    
+    -- Final confirmation
+    _G.MedusaLoaded = false
+    getgenv().MedusaLoaded = false
+    getgenv().MedusaEject = nil
 end
 
 local function doEject()
@@ -2782,7 +2833,7 @@ do -- Target HUD
     makeDraggable(thPanel, thPanel)
     obj.thGui = thGui
 
-    task.spawn(function() local lastTarget = nil; while st.running do task.wait(1/20)
+    task.spawn(function() local lastTarget = nil; while st.running and _G.MedusaLoaded do task.wait(1/20)
         local show = st.aimbot and rmbDown and obj.lockedTarget ~= nil
         if show then pcall(function()
             local char = obj.lockedTarget.Character; local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -2822,7 +2873,7 @@ do -- Feedback Module
     local specTitle = mkLabel(specPanel, "👁️ Spectators: 0", 10, C.text, 8, 2, 1, 16); specTitle.Font = Enum.Font.GothamBold
     local specList = mkLabel(specPanel, "", 9, C.textMuted, 8, 18, 1, 40); specList.TextWrapped = true; specList.TextYAlignment = Enum.TextYAlignment.Top
     makeDraggable(specPanel, specPanel)
-    task.spawn(function() local lastHP = {}; while st.running do task.wait(1/15)
+    task.spawn(function() local lastHP = {}; while st.running and _G.MedusaLoaded do task.wait(1/15)
         if st.hitSound and obj.lockedTarget and obj.lockedTarget.Character then pcall(function()
             local hum = obj.lockedTarget.Character:FindFirstChildOfClass("Humanoid"); if hum then
                 local id = obj.lockedTarget.UserId; local prev = lastHP[id]; lastHP[id] = hum.Health
@@ -2889,7 +2940,7 @@ do
     table.insert(obj.themeElements, { obj = circleSk, prop = "Color" })
 
     task.spawn(function()
-        while st.running do
+        while st.running and _G.MedusaLoaded do
             task.wait(1 / 20)
             chContainer.Visible = st.crosshair
             if st.crosshair then
@@ -2978,7 +3029,7 @@ end
 --  S30E: GHOST MODE (panel fades when mouse away)
 -- ══════════════════════════════════════════════════════════════
 task.spawn(function()
-    while st.running do
+    while st.running and _G.MedusaLoaded do
         task.wait(0.3)
         if st.ghostMode and panel and panel.Parent then
             pcall(function()
@@ -3056,7 +3107,7 @@ function refreshPlayers()
     end) end end
 end
 
-task.spawn(function() while st.running do task.wait(5); if obj.currentTab == "players" then pcall(function() refreshPlayers() end) end end end)
+task.spawn(function() while st.running and _G.MedusaLoaded do task.wait(5); if obj.currentTab == "players" then pcall(function() refreshPlayers() end) end end end)
 
 -- ══════════════════════════════════════════════════════════════
 --  S31C: ACTIVE HUD (Keybind List — top right corner)
@@ -3144,7 +3195,7 @@ do
 
     -- Update loop: sync HUD with st[] every 0.3s
     task.spawn(function()
-        while st.running do
+        while st.running and _G.MedusaLoaded do
             task.wait(0.3)
             local anyActive = false
             for _, feat in ipairs(hudFeatures) do
